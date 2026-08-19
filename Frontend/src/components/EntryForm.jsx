@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useToast } from '../context/ToastContext'
 import Button from './ui/Button'
 import Card from './ui/Card'
 import Input from './ui/Input'
+
+const QrScanner = lazy(() => import('./QrScanner'))
 
 const initialState = {
   vehicle_number: '',
@@ -20,10 +22,17 @@ export default function EntryForm({ onSubmit }) {
   const { showToast } = useToast()
   const [form, setForm] = useState(initialState)
   const [submitting, setSubmitting] = useState(false)
+  const [scanning, setScanning] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleScan = (decodedText) => {
+    setForm((prev) => ({ ...prev, vehicle_number: decodedText }))
+    setScanning(false)
+    showToast(`Vehicle number scanned: ${decodedText}`, 'success')
   }
 
   const handleSubmit = async (e) => {
@@ -46,7 +55,23 @@ export default function EntryForm({ onSubmit }) {
 
   return (
     <Card>
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Register Vehicle Entry</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Register Vehicle Entry</h2>
+        {!scanning && (
+          <Button type="button" variant="secondary" size="sm" onClick={() => setScanning(true)}>
+            Scan QR Code
+          </Button>
+        )}
+      </div>
+
+      {scanning && (
+        <div className="mb-4">
+          <Suspense fallback={<p className="text-sm text-slate-500">Loading scanner...</p>}>
+            <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />
+          </Suspense>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Input name="vehicle_number" value={form.vehicle_number} onChange={handleChange} placeholder="Vehicle Number" required />
         <Input name="driver_name" value={form.driver_name} onChange={handleChange} placeholder="Driver Name" required />
