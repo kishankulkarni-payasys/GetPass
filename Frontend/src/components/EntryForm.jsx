@@ -32,7 +32,7 @@ export default function EntryForm({ onSubmit }) {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleScan = (decodedText) => {
+  const handleDocScan = (decodedText) => {
     let scanned
     try {
       scanned = JSON.parse(decodedText)
@@ -48,6 +48,24 @@ export default function EntryForm({ onSubmit }) {
       supplier_transporter_name: scanned.supplier_transporter_name ?? prev.supplier_transporter_name,
       project_name: scanned.project_name ?? prev.project_name,
       subproject_name: scanned.subproject_name ?? prev.subproject_name,
+    }))
+    setScanning(false)
+    showToast('Scanned data filled into the form', 'success')
+  }
+
+  const handleVehicleScan = (decodedText) => {
+    let scanned
+    try {
+      scanned = JSON.parse(decodedText)
+    } catch {
+      scanned = { vehicle_number: decodedText }
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      vehicle_number: scanned.vehicle_number ?? prev.vehicle_number,
+      driver_name: scanned.driver_name ?? prev.driver_name,
+      driver_phone: scanned.driver_phone ?? prev.driver_phone,
     }))
     setScanning(false)
     showToast('Scanned data filled into the form', 'success')
@@ -78,17 +96,21 @@ export default function EntryForm({ onSubmit }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           {step === 1 ? 'Step 1 of 2: Document Details' : 'Step 2 of 2: Vehicle & Material Details'}
         </h2>
-        {step === 1 && !scanning && (
+        {!scanning && (
           <Button type="button" variant="secondary" size="sm" onClick={() => setScanning(true)}>
-            Scan Document
+            {step === 1 ? 'Scan Document' : 'Scan Vehicle'}
           </Button>
         )}
       </div>
 
-      {step === 1 && scanning && (
+      {scanning && (
         <div className="mb-4">
           <Suspense fallback={<p className="text-sm text-slate-500">Loading scanner...</p>}>
-            <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />
+            <QrScanner
+              title={step === 1 ? 'Scan Document QR Code' : 'Scan Vehicle QR Code'}
+              onScan={step === 1 ? handleDocScan : handleVehicleScan}
+              onClose={() => setScanning(false)}
+            />
           </Suspense>
         </div>
       )}
