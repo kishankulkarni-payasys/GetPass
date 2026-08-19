@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import EntryForm from '../components/EntryForm'
 import EntryTable from '../components/EntryTable'
+import WeighbridgeTab from '../components/WeighbridgeTab'
 import { useEntries } from '../hooks/useEntries'
 
 const TABS = [
   { key: 'new', label: 'New Entry' },
   { key: 'log', label: 'Entry Log' },
+  { key: 'weighbridge', label: 'Weighbridge' },
 ]
 
 export default function EntriesPage() {
@@ -32,11 +34,9 @@ export default function EntriesPage() {
         ))}
       </div>
 
-      {activeTab === 'new' ? (
-        <EntryForm onSubmit={addEntry} />
-      ) : (
-        <EntryTable entries={entries} loading={loading} error={error} onMarkExit={markExit} />
-      )}
+      {activeTab === 'new' && <EntryForm onSubmit={addEntry} />}
+      {activeTab === 'log' && <EntryTable entries={entries} loading={loading} error={error} onMarkExit={markExit} />}
+      {activeTab === 'weighbridge' && <WeighbridgeTab />}
     </div>
   )
 }
