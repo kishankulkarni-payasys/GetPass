@@ -1,12 +1,23 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import Badge from './ui/Badge'
 import Button from './ui/Button'
 
 export default function NavBar() {
   const { user, logout } = useAuth()
+  const { showToast } = useToast()
 
   if (!user) return null
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      showToast('Logged out successfully', 'success')
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Logout failed', 'error')
+    }
+  }
 
   return (
     <header className="bg-slate-900 shadow-sm">
@@ -29,7 +40,7 @@ export default function NavBar() {
             {user.full_name}
             <Badge tone="blue">{user.role}</Badge>
           </span>
-          <Button variant="ghost" size="sm" onClick={logout}>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
             Logout
           </Button>
         </div>

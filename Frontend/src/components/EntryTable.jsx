@@ -1,8 +1,20 @@
+import { useToast } from '../context/ToastContext'
 import Badge from './ui/Badge'
 import Button from './ui/Button'
 import Card from './ui/Card'
 
 export default function EntryTable({ entries, loading, error, onMarkExit }) {
+  const { showToast } = useToast()
+
+  const handleMarkExit = async (id) => {
+    try {
+      await onMarkExit(id)
+      showToast('Vehicle marked as exited', 'success')
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to mark exit', 'error')
+    }
+  }
+
   if (loading) return <p className="text-slate-500">Loading entries...</p>
   if (error) return <p className="text-red-600">{error}</p>
   if (entries.length === 0) return <p className="text-slate-500">No entries yet.</p>
@@ -42,7 +54,7 @@ export default function EntryTable({ entries, loading, error, onMarkExit }) {
               </td>
               <td className="px-4 py-3">
                 {!entry.exit_time && (
-                  <Button variant="warning" size="sm" onClick={() => onMarkExit(entry.id)}>
+                  <Button variant="warning" size="sm" onClick={() => handleMarkExit(entry.id)}>
                     Mark Exit
                   </Button>
                 )}

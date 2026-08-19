@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { createUser, deleteUser, getUsers, updateUser } from '../api/users'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -11,11 +12,11 @@ const initialForm = { username: '', password: '', full_name: '', role: 'security
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth()
+  const { showToast } = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [form, setForm] = useState(initialForm)
-  const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
   const refresh = async () => {
@@ -43,31 +44,46 @@ export default function UsersPage() {
   const handleCreate = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-    setFormError(null)
     try {
       await createUser(form)
       setForm(initialForm)
       await refresh()
+      showToast('User created', 'success')
     } catch (err) {
-      setFormError(err.response?.data?.detail || 'Failed to create user')
+      showToast(err.response?.data?.detail || 'Failed to create user', 'error')
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleToggleActive = async (targetUser) => {
-    await updateUser(targetUser.id, { is_active: !targetUser.is_active })
-    await refresh()
+    try {
+      await updateUser(targetUser.id, { is_active: !targetUser.is_active })
+      await refresh()
+      showToast(targetUser.is_active ? 'User deactivated' : 'User activated', 'success')
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to update user', 'error')
+    }
   }
 
   const handleRoleChange = async (targetUser, role) => {
-    await updateUser(targetUser.id, { role })
-    await refresh()
+    try {
+      await updateUser(targetUser.id, { role })
+      await refresh()
+      showToast('User role updated', 'success')
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to update user', 'error')
+    }
   }
 
   const handleDelete = async (targetUser) => {
-    await deleteUser(targetUser.id)
-    await refresh()
+    try {
+      await deleteUser(targetUser.id)
+      await refresh()
+      showToast('User deleted', 'success')
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to delete user', 'error')
+    }
   }
 
   return (
@@ -84,7 +100,6 @@ export default function UsersPage() {
             <option value="security_guard">Security Guard</option>
             <option value="admin">Admin</option>
           </Select>
-          {formError && <p className="col-span-full text-sm text-red-600">{formError}</p>}
           <Button type="submit" disabled={submitting} className="col-span-full sm:col-span-1">
             {submitting ? 'Saving...' : 'Create User'}
           </Button>

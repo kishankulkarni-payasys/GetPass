@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToast } from '../context/ToastContext'
 import Button from './ui/Button'
 import Card from './ui/Card'
 import Input from './ui/Input'
@@ -16,9 +17,9 @@ const initialState = {
 }
 
 export default function EntryForm({ onSubmit }) {
+  const { showToast } = useToast()
   const [form, setForm] = useState(initialState)
   const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState(null)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -28,7 +29,6 @@ export default function EntryForm({ onSubmit }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-    setFormError(null)
     try {
       const payload = {
         ...form,
@@ -36,8 +36,9 @@ export default function EntryForm({ onSubmit }) {
       }
       await onSubmit(payload)
       setForm(initialState)
+      showToast('Vehicle entry registered', 'success')
     } catch (err) {
-      setFormError(err.response?.data?.detail || 'Failed to save entry')
+      showToast(err.response?.data?.detail || 'Failed to save entry', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -56,7 +57,6 @@ export default function EntryForm({ onSubmit }) {
         <Input name="purpose" value={form.purpose} onChange={handleChange} placeholder="Purpose" />
         <Input name="reference_doc_number" value={form.reference_doc_number} onChange={handleChange} placeholder="Challan/Invoice/PO Number" />
         <Input name="supplier_transporter_name" value={form.supplier_transporter_name} onChange={handleChange} placeholder="Supplier/Transporter" />
-        {formError && <p className="col-span-full text-sm text-red-600">{formError}</p>}
         <Button type="submit" disabled={submitting} className="col-span-full sm:col-span-1">
           {submitting ? 'Saving...' : 'Register Entry'}
         </Button>
