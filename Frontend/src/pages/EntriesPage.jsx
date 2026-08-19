@@ -7,7 +7,7 @@ export default function EntriesPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Vehicle Entry Log</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">Vehicle Entry Log</h1>
       <div className="mb-8">
         <EntryForm onSubmit={addEntry} />
       </div>

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { createUser, deleteUser, getUsers, updateUser } from '../api/users'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import Input from '../components/ui/Input'
+import Select from '../components/ui/Select'
 
 const initialForm = { username: '', password: '', full_name: '', role: 'security_guard' }
 
@@ -67,81 +72,81 @@ export default function UsersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">User Management</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">User Management</h1>
 
-      <form
-        onSubmit={handleCreate}
-        className="mb-8 grid grid-cols-1 gap-4 rounded-lg border border-gray-200 p-4 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        <input name="username" value={form.username} onChange={handleChange} placeholder="Username" required className="rounded border border-gray-300 px-3 py-2" />
-        <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Password" required className="rounded border border-gray-300 px-3 py-2" />
-        <input name="full_name" value={form.full_name} onChange={handleChange} placeholder="Full Name" required className="rounded border border-gray-300 px-3 py-2" />
-        <select name="role" value={form.role} onChange={handleChange} className="rounded border border-gray-300 px-3 py-2">
-          <option value="security_guard">Security Guard</option>
-          <option value="admin">Admin</option>
-        </select>
-        {formError && <p className="col-span-full text-sm text-red-600">{formError}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="col-span-full rounded bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-50 sm:col-span-1"
-        >
-          {submitting ? 'Saving...' : 'Create User'}
-        </button>
-      </form>
+      <Card className="mb-8">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Create User</h2>
+        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Input name="username" value={form.username} onChange={handleChange} placeholder="Username" required />
+          <Input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Password" required />
+          <Input name="full_name" value={form.full_name} onChange={handleChange} placeholder="Full Name" required />
+          <Select name="role" value={form.role} onChange={handleChange}>
+            <option value="security_guard">Security Guard</option>
+            <option value="admin">Admin</option>
+          </Select>
+          {formError && <p className="col-span-full text-sm text-red-600">{formError}</p>}
+          <Button type="submit" disabled={submitting} className="col-span-full sm:col-span-1">
+            {submitting ? 'Saving...' : 'Create User'}
+          </Button>
+        </form>
+      </Card>
 
-      {loading && <p className="text-gray-500">Loading users...</p>}
+      {loading && <p className="text-slate-500">Loading users...</p>}
       {error && <p className="text-red-600">{error}</p>}
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <Card className="overflow-x-auto p-0">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600">Username</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600">Full Name</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600">Role</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600">Status</th>
-                <th className="px-3 py-2 text-left font-medium text-gray-600">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Username</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Full Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {users.map((u) => (
-                <tr key={u.id}>
-                  <td className="px-3 py-2">{u.username}</td>
-                  <td className="px-3 py-2">{u.full_name}</td>
-                  <td className="px-3 py-2">
-                    <select
+                <tr key={u.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">{u.username}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.full_name}</td>
+                  <td className="px-4 py-3">
+                    <Select
+                      size="sm"
                       value={u.role}
                       disabled={u.id === currentUser.id}
                       onChange={(e) => handleRoleChange(u, e.target.value)}
-                      className="rounded border border-gray-300 px-2 py-1"
                     >
                       <option value="security_guard">Security Guard</option>
                       <option value="admin">Admin</option>
-                    </select>
+                    </Select>
                   </td>
-                  <td className="px-3 py-2">{u.is_active ? 'Active' : 'Inactive'}</td>
-                  <td className="px-3 py-2 space-x-2">
-                    <button
+                  <td className="px-4 py-3">
+                    <Badge tone={u.is_active ? 'green' : 'slate'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>
+                  </td>
+                  <td className="px-4 py-3 space-x-2">
+                    <Button
+                      variant="warning"
+                      size="sm"
                       onClick={() => handleToggleActive(u)}
                       disabled={u.id === currentUser.id}
-                      className="rounded bg-amber-500 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
                     >
                       {u.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleDelete(u)}
                       disabled={u.id === currentUser.id}
-                      className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   )

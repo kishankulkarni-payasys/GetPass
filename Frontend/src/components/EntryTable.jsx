@@ -1,45 +1,56 @@
+import Badge from './ui/Badge'
+import Button from './ui/Button'
+import Card from './ui/Card'
+
 export default function EntryTable({ entries, loading, error, onMarkExit }) {
-  if (loading) return <p className="text-gray-500">Loading entries...</p>
+  if (loading) return <p className="text-slate-500">Loading entries...</p>
   if (error) return <p className="text-red-600">{error}</p>
-  if (entries.length === 0) return <p className="text-gray-500">No entries yet.</p>
+  if (entries.length === 0) return <p className="text-slate-500">No entries yet.</p>
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead className="bg-gray-50">
+    <Card className="overflow-x-auto p-0">
+      <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <thead className="bg-slate-50">
           <tr>
-            <th className="px-3 py-2 text-left font-medium text-gray-600">Vehicle</th>
-            <th className="px-3 py-2 text-left font-medium text-gray-600">Driver</th>
-            <th className="px-3 py-2 text-left font-medium text-gray-600">Material</th>
-            <th className="px-3 py-2 text-left font-medium text-gray-600">Entry</th>
-            <th className="px-3 py-2 text-left font-medium text-gray-600">Exit</th>
-            <th className="px-3 py-2 text-left font-medium text-gray-600">Action</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Vehicle</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Driver</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Material</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Entry</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Action</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-slate-100">
           {entries.map((entry) => (
-            <tr key={entry.id}>
-              <td className="px-3 py-2">{entry.vehicle_number}</td>
-              <td className="px-3 py-2">{entry.driver_name}</td>
-              <td className="px-3 py-2">
-                {entry.material_description} {entry.material_quantity ? `(${entry.material_quantity} ${entry.material_unit || ''})` : ''}
+            <tr key={entry.id} className="hover:bg-slate-50">
+              <td className="px-4 py-3 font-medium text-slate-900">{entry.vehicle_number}</td>
+              <td className="px-4 py-3 text-slate-600">{entry.driver_name}</td>
+              <td className="px-4 py-3 text-slate-600">
+                {entry.material_description}
+                {entry.material_quantity ? ` (${entry.material_quantity} ${entry.material_unit || ''})` : ''}
               </td>
-              <td className="px-3 py-2">{new Date(entry.entry_time).toLocaleString()}</td>
-              <td className="px-3 py-2">{entry.exit_time ? new Date(entry.exit_time).toLocaleString() : '-'}</td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-3 text-slate-500">{new Date(entry.entry_time).toLocaleString()}</td>
+              <td className="px-4 py-3">
+                {entry.exit_time ? (
+                  <div className="flex flex-col gap-1">
+                    <Badge tone="green">Exited</Badge>
+                    <span className="text-xs text-slate-400">{new Date(entry.exit_time).toLocaleString()}</span>
+                  </div>
+                ) : (
+                  <Badge tone="blue">On Site</Badge>
+                )}
+              </td>
+              <td className="px-4 py-3">
                 {!entry.exit_time && (
-                  <button
-                    onClick={() => onMarkExit(entry.id)}
-                    className="rounded bg-amber-500 px-2 py-1 text-xs font-medium text-white"
-                  >
+                  <Button variant="warning" size="sm" onClick={() => onMarkExit(entry.id)}>
                     Mark Exit
-                  </button>
+                  </Button>
                 )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   )
 }
