@@ -3,3 +3,5 @@ uvicorn[standard]>=0.32
 sqlalchemy>=2.0
 pyodbc>=5.1
 python-dotenv>=1.0
+bcrypt>=4.2
+pyjwt>=2.9
