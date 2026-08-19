@@ -4,11 +4,12 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user
 from app.database import get_db
 from app.models import VehicleEntry
 from app.schemas import VehicleEntryCreate, VehicleEntryOut
 
-router = APIRouter(prefix="/api/entries", tags=["entries"])
+router = APIRouter(prefix="/api/entries", tags=["entries"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=VehicleEntryOut, status_code=201)
