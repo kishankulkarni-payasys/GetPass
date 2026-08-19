@@ -8,6 +8,8 @@ const QrScanner = lazy(() => import('./QrScanner'))
 
 const initialState = {
   vehicle_number: '',
+  project_name: '',
+  subproject_name: '',
   driver_name: '',
   driver_phone: '',
   material_description: '',
@@ -30,9 +32,21 @@ export default function EntryForm({ onSubmit }) {
   }
 
   const handleScan = (decodedText) => {
-    setForm((prev) => ({ ...prev, vehicle_number: decodedText }))
+    let scanned
+    try {
+      scanned = JSON.parse(decodedText)
+    } catch {
+      scanned = { vehicle_number: decodedText }
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      vehicle_number: scanned.vehicle_number ?? prev.vehicle_number,
+      project_name: scanned.project_name ?? prev.project_name,
+      subproject_name: scanned.subproject_name ?? prev.subproject_name,
+    }))
     setScanning(false)
-    showToast(`Vehicle number scanned: ${decodedText}`, 'success')
+    showToast('Scanned data filled into the form', 'success')
   }
 
   const handleSubmit = async (e) => {
@@ -74,6 +88,8 @@ export default function EntryForm({ onSubmit }) {
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Input name="vehicle_number" value={form.vehicle_number} onChange={handleChange} placeholder="Vehicle Number" required />
+        <Input name="project_name" value={form.project_name} onChange={handleChange} placeholder="Project Name" />
+        <Input name="subproject_name" value={form.subproject_name} onChange={handleChange} placeholder="Subproject Name" />
         <Input name="driver_name" value={form.driver_name} onChange={handleChange} placeholder="Driver Name" required />
         <Input name="driver_phone" value={form.driver_phone} onChange={handleChange} placeholder="Driver Phone" />
         <Input name="material_description" value={form.material_description} onChange={handleChange} placeholder="Material Description" />

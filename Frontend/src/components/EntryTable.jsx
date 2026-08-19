@@ -25,6 +25,7 @@ export default function EntryTable({ entries, loading, error, onMarkExit }) {
         <thead className="bg-slate-50">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Vehicle</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Project</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Driver</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Material</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Entry</th>
@@ -36,6 +37,10 @@ export default function EntryTable({ entries, loading, error, onMarkExit }) {
           {entries.map((entry) => (
             <tr key={entry.id} className="hover:bg-slate-50">
               <td className="px-4 py-3 font-medium text-slate-900">{entry.vehicle_number}</td>
+              <td className="px-4 py-3 text-slate-600">
+                {entry.project_name || '-'}
+                {entry.subproject_name ? <span className="block text-xs text-slate-400">{entry.subproject_name}</span> : null}
+              </td>
               <td className="px-4 py-3 text-slate-600">{entry.driver_name}</td>
               <td className="px-4 py-3 text-slate-600">
                 {entry.material_description}
