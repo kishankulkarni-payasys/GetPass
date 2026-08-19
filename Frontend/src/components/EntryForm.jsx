@@ -36,12 +36,15 @@ export default function EntryForm({ onSubmit }) {
     try {
       scanned = JSON.parse(decodedText)
     } catch {
-      scanned = { vehicle_number: decodedText }
+      setScanning(false)
+      showToast('Scanned code is not a valid document QR', 'error')
+      return
     }
 
     setForm((prev) => ({
       ...prev,
-      vehicle_number: scanned.vehicle_number ?? prev.vehicle_number,
+      reference_doc_number: scanned.reference_doc_number ?? prev.reference_doc_number,
+      supplier_transporter_name: scanned.supplier_transporter_name ?? prev.supplier_transporter_name,
       project_name: scanned.project_name ?? prev.project_name,
       subproject_name: scanned.subproject_name ?? prev.subproject_name,
     }))
@@ -73,7 +76,7 @@ export default function EntryForm({ onSubmit }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Register Vehicle Entry</h2>
         {!scanning && (
           <Button type="button" variant="secondary" size="sm" onClick={() => setScanning(true)}>
-            Scan QR Code
+            Scan Document
           </Button>
         )}
       </div>
