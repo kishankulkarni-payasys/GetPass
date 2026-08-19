@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
@@ -11,6 +12,10 @@ from app.routers import auth, entries, users
 app = FastAPI(title="GatePass API")
 
 Base.metadata.create_all(bind=engine)
+
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 
 def _bootstrap_admin():
