@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -16,6 +16,14 @@ class VehicleEntryCreate(BaseModel):
     purpose: Optional[str] = None
     reference_doc_number: Optional[str] = None
     supplier_transporter_name: Optional[str] = None
+
+
+class PhotoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    file_path: str
+    uploaded_at: datetime
 
 
 class VehicleEntryOut(BaseModel):
@@ -35,10 +43,20 @@ class VehicleEntryOut(BaseModel):
     supplier_transporter_name: Optional[str] = None
     entry_time: datetime
     exit_time: Optional[datetime] = None
+    gross_weight: Optional[float] = None
+    weight_unit: Optional[str] = None
+    weighed_at: Optional[datetime] = None
+    weighed_by_id: Optional[int] = None
+    photos: List[PhotoOut] = []
     created_at: datetime
 
 
-Role = Literal["admin", "security_guard"]
+class WeightUpdate(BaseModel):
+    gross_weight: float
+    weight_unit: Optional[str] = None
+
+
+Role = Literal["admin", "security_guard", "weighbridge_operator"]
 
 
 class LoginRequest(BaseModel):
