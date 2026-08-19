@@ -3,7 +3,7 @@ import Badge from './ui/Badge'
 import Button from './ui/Button'
 import Card from './ui/Card'
 
-export default function EntryTable({ entries, loading, error, onMarkExit }) {
+export default function EntryTable({ entries, loading, error, onMarkExit, canMarkExit = true }) {
   const { showToast } = useToast()
 
   const handleMarkExit = async (id) => {
@@ -58,7 +58,7 @@ export default function EntryTable({ entries, loading, error, onMarkExit }) {
                 )}
               </td>
               <td className="px-4 py-3">
-                {!entry.exit_time && (
+                {!entry.exit_time && canMarkExit && (
                   <Button variant="warning" size="sm" onClick={() => handleMarkExit(entry.id)}>
                     Mark Exit
                   </Button>

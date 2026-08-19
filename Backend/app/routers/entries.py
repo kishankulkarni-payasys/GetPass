@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_entry_write
 from app.database import get_db
 from app.models import User, VehicleEntry, VehicleEntryPhoto
 from app.photo_storage import InvalidPhotoError, save_entry_photo
@@ -13,7 +13,7 @@ from app.schemas import PhotoOut, VehicleEntryCreate, VehicleEntryOut, WeightUpd
 router = APIRouter(prefix="/api/entries", tags=["entries"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("", response_model=VehicleEntryOut, status_code=201)
+@router.post("", response_model=VehicleEntryOut, status_code=201, dependencies=[Depends(require_entry_write)])
 def create_entry(entry: VehicleEntryCreate, db: Session = Depends(get_db)):
     db_entry = VehicleEntry(**entry.model_dump())
     db.add(db_entry)
@@ -52,7 +52,7 @@ def get_entry(entry_id: int, db: Session = Depends(get_db)):
     return entry
 
 
-@router.patch("/{entry_id}/exit", response_model=VehicleEntryOut)
+@router.patch("/{entry_id}/exit", response_model=VehicleEntryOut, dependencies=[Depends(require_entry_write)])
 def mark_exit(entry_id: int, db: Session = Depends(get_db)):
     entry = db.get(VehicleEntry, entry_id)
     if not entry:
