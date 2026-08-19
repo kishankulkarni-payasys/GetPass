@@ -98,6 +98,7 @@ export default function UsersPage() {
           <Input name="full_name" value={form.full_name} onChange={handleChange} placeholder="Full Name" required />
           <Select name="role" value={form.role} onChange={handleChange}>
             <option value="security_guard">Security Guard</option>
+            <option value="weighbridge_operator">Weighbridge Operator</option>
             <option value="admin">Admin</option>
           </Select>
           <Button type="submit" disabled={submitting} className="col-span-full sm:col-span-1">
@@ -133,6 +134,7 @@ export default function UsersPage() {
                       onChange={(e) => handleRoleChange(u, e.target.value)}
                     >
                       <option value="security_guard">Security Guard</option>
+                      <option value="weighbridge_operator">Weighbridge Operator</option>
                       <option value="admin">Admin</option>
                     </Select>
                   </td>
