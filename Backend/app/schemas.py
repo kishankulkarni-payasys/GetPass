@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict
 
 class VehicleEntryCreate(BaseModel):
     vehicle_number: str
+    project_name: Optional[str] = None
+    subproject_name: Optional[str] = None
     driver_name: str
     driver_phone: Optional[str] = None
     material_description: Optional[str] = None
@@ -21,6 +23,8 @@ class VehicleEntryOut(BaseModel):
 
     id: int
     vehicle_number: str
+    project_name: Optional[str] = None
+    subproject_name: Optional[str] = None
     driver_name: str
     driver_phone: Optional[str] = None
     material_description: Optional[str] = None
