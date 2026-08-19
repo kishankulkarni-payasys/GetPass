@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
 from app.models import User
-from app.routers import auth, entries
+from app.routers import auth, entries, users
 
 app = FastAPI(title="GatePass API")
 
@@ -37,6 +37,7 @@ _bootstrap_admin()
 
 app.include_router(auth.router)
 app.include_router(entries.router)
+app.include_router(users.router)
 
 
 @app.exception_handler(Exception)
