@@ -14,7 +14,10 @@ const ALL_TABS = [
 export default function EntriesPage() {
   const { user } = useAuth()
   const canWriteEntries = user?.role !== 'weighbridge_operator'
-  const tabs = canWriteEntries ? ALL_TABS : ALL_TABS.filter((tab) => tab.key !== 'new')
+  const canAccessWeighbridge = user?.role !== 'security_guard'
+  const tabs = ALL_TABS.filter((tab) =>
+    tab.key === 'new' ? canWriteEntries : tab.key === 'weighbridge' ? canAccessWeighbridge : true
+  )
 
   const { entries, loading, error, addEntry, markExit } = useEntries()
   const [activeTab, setActiveTab] = useState(canWriteEntries ? 'new' : 'log')
@@ -49,7 +52,7 @@ export default function EntriesPage() {
           canMarkExit={canWriteEntries}
         />
       )}
-      {activeTab === 'weighbridge' && <WeighbridgeTab />}
+      {activeTab === 'weighbridge' && canAccessWeighbridge && <WeighbridgeTab />}
     </div>
   )
 }
