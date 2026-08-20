@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user, require_entry_write
+from app.auth import get_current_user, require_entry_write, require_weighbridge_write
 from app.database import get_db
 from app.models import User, VehicleEntry, VehicleEntryPhoto
 from app.photo_storage import InvalidPhotoError, save_entry_photo
@@ -65,7 +65,7 @@ def mark_exit(entry_id: int, db: Session = Depends(get_db)):
     return entry
 
 
-@router.patch("/{entry_id}/weight", response_model=VehicleEntryOut)
+@router.patch("/{entry_id}/weight", response_model=VehicleEntryOut, dependencies=[Depends(require_weighbridge_write)])
 def record_weight(
     entry_id: int,
     payload: WeightUpdate,
@@ -84,7 +84,7 @@ def record_weight(
     return entry
 
 
-@router.post("/{entry_id}/photos", response_model=List[PhotoOut], status_code=201)
+@router.post("/{entry_id}/photos", response_model=List[PhotoOut], status_code=201, dependencies=[Depends(require_weighbridge_write)])
 async def upload_photos(
     entry_id: int,
     files: List[UploadFile] = File(...),

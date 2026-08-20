@@ -60,3 +60,9 @@ def require_entry_write(user: User = Depends(get_current_user)) -> User:
     if user.role == "weighbridge_operator":
         raise HTTPException(status_code=403, detail="Weighbridge operators cannot register or close out entries")
     return user
+
+
+def require_weighbridge_write(user: User = Depends(get_current_user)) -> User:
+    if user.role == "security_guard":
+        raise HTTPException(status_code=403, detail="Security guards cannot record weights or upload weighbridge photos")
+    return user
