@@ -1,21 +1,23 @@
 import { useState } from 'react'
 import EntryForm from '../components/EntryForm'
 import EntryTable from '../components/EntryTable'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import WeighbridgeTab from '../components/WeighbridgeTab'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { useEntries } from '../hooks/useEntries'
-
-const ALL_TABS = [
-  { key: 'new', label: 'New Entry' },
-  { key: 'log', label: 'Entry Log' },
-  { key: 'weighbridge', label: 'Weighbridge' },
-]
 
 export default function EntriesPage() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const canWriteEntries = user?.role !== 'weighbridge_operator'
   const canAccessWeighbridge = user?.role !== 'security_guard'
-  const tabs = ALL_TABS.filter((tab) =>
+  const allTabs = [
+    { key: 'new', label: t('tabNew') },
+    { key: 'log', label: t('tabLog') },
+    { key: 'weighbridge', label: 'Weighbridge' },
+  ]
+  const tabs = allTabs.filter((tab) =>
     tab.key === 'new' ? canWriteEntries : tab.key === 'weighbridge' ? canAccessWeighbridge : true
   )
 
@@ -24,7 +26,10 @@ export default function EntriesPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Vehicle Entry Log</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900">{t('pageTitle')}</h1>
+        {user?.role === 'security_guard' && <LanguageSwitcher />}
+      </div>
 
       <div className="mb-6 flex gap-2 border-b border-slate-200">
         {tabs.map((tab) => (
