@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
+import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import Button from './ui/Button'
 import Card from './ui/Card'
@@ -21,6 +22,7 @@ const initialState = {
 }
 
 export default function EntryForm({ onSubmit }) {
+  const { t } = useLanguage()
   const { showToast } = useToast()
   const [form, setForm] = useState(initialState)
   const [submitting, setSubmitting] = useState(false)
@@ -38,7 +40,7 @@ export default function EntryForm({ onSubmit }) {
       scanned = JSON.parse(decodedText)
     } catch {
       setScanning(false)
-      showToast('Scanned code is not a valid document QR', 'error')
+      showToast(t('toastInvalidDocQr'), 'error')
       return
     }
 
@@ -50,7 +52,7 @@ export default function EntryForm({ onSubmit }) {
       subproject_name: scanned.subproject_name ?? prev.subproject_name,
     }))
     setScanning(false)
-    showToast('Scanned data filled into the form', 'success')
+    showToast(t('toastScannedFilled'), 'success')
   }
 
   const handleVehicleScan = (decodedText) => {
@@ -68,7 +70,7 @@ export default function EntryForm({ onSubmit }) {
       driver_phone: scanned.driver_phone ?? prev.driver_phone,
     }))
     setScanning(false)
-    showToast('Scanned data filled into the form', 'success')
+    showToast(t('toastScannedFilled'), 'success')
   }
 
   const handleSubmit = async (e) => {
@@ -82,9 +84,9 @@ export default function EntryForm({ onSubmit }) {
       await onSubmit(payload)
       setForm(initialState)
       setStep(1)
-      showToast('Vehicle entry registered', 'success')
+      showToast(t('toastEntryRegistered'), 'success')
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to save entry', 'error')
+      showToast(err.response?.data?.detail || t('toastEntryFailed'), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -94,20 +96,20 @@ export default function EntryForm({ onSubmit }) {
     <Card>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          {step === 1 ? 'Step 1 of 2: Document Details' : 'Step 2 of 2: Vehicle & Material Details'}
+          {step === 1 ? t('step1Title') : t('step2Title')}
         </h2>
         {!scanning && (
           <Button type="button" variant="secondary" size="sm" onClick={() => setScanning(true)}>
-            {step === 1 ? 'Scan Document' : 'Scan Vehicle'}
+            {step === 1 ? t('scanDocument') : t('scanVehicle')}
           </Button>
         )}
       </div>
 
       {scanning && (
         <div className="mb-4">
-          <Suspense fallback={<p className="text-sm text-slate-500">Loading scanner...</p>}>
+          <Suspense fallback={<p className="text-sm text-slate-500">{t('loadingScanner')}</p>}>
             <QrScanner
-              title={step === 1 ? 'Scan Document QR Code' : 'Scan Vehicle QR Code'}
+              title={step === 1 ? t('scanDocumentQr') : t('scanVehicleQr')}
               onScan={step === 1 ? handleDocScan : handleVehicleScan}
               onClose={() => setScanning(false)}
             />
@@ -118,29 +120,29 @@ export default function EntryForm({ onSubmit }) {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {step === 1 ? (
           <>
-            <Input name="reference_doc_number" value={form.reference_doc_number} onChange={handleChange} placeholder="Challan/Invoice/PO Number" />
-            <Input name="supplier_transporter_name" value={form.supplier_transporter_name} onChange={handleChange} placeholder="Supplier/Transporter" />
-            <Input name="project_name" value={form.project_name} onChange={handleChange} placeholder="Project Name" />
-            <Input name="subproject_name" value={form.subproject_name} onChange={handleChange} placeholder="Subproject Name" />
+            <Input name="reference_doc_number" value={form.reference_doc_number} onChange={handleChange} placeholder={t('placeholderRefDoc')} />
+            <Input name="supplier_transporter_name" value={form.supplier_transporter_name} onChange={handleChange} placeholder={t('placeholderSupplier')} />
+            <Input name="project_name" value={form.project_name} onChange={handleChange} placeholder={t('placeholderProject')} />
+            <Input name="subproject_name" value={form.subproject_name} onChange={handleChange} placeholder={t('placeholderSubproject')} />
             <Button type="button" onClick={() => setStep(2)} className="col-span-full sm:col-span-1">
-              Next
+              {t('next')}
             </Button>
           </>
         ) : (
           <>
-            <Input name="vehicle_number" value={form.vehicle_number} onChange={handleChange} placeholder="Vehicle Number" required />
-            <Input name="driver_name" value={form.driver_name} onChange={handleChange} placeholder="Driver Name" required />
-            <Input name="driver_phone" value={form.driver_phone} onChange={handleChange} placeholder="Driver Phone" />
-            <Input name="material_description" value={form.material_description} onChange={handleChange} placeholder="Material Description" />
-            <Input name="material_quantity" type="number" value={form.material_quantity} onChange={handleChange} placeholder="Quantity" />
-            <Input name="material_unit" value={form.material_unit} onChange={handleChange} placeholder="Unit (kg/ton/units)" />
-            <Input name="purpose" value={form.purpose} onChange={handleChange} placeholder="Purpose" />
+            <Input name="vehicle_number" value={form.vehicle_number} onChange={handleChange} placeholder={t('placeholderVehicleNumber')} required />
+            <Input name="driver_name" value={form.driver_name} onChange={handleChange} placeholder={t('placeholderDriverName')} required />
+            <Input name="driver_phone" value={form.driver_phone} onChange={handleChange} placeholder={t('placeholderDriverPhone')} />
+            <Input name="material_description" value={form.material_description} onChange={handleChange} placeholder={t('placeholderMaterialDescription')} />
+            <Input name="material_quantity" type="number" value={form.material_quantity} onChange={handleChange} placeholder={t('placeholderQuantity')} />
+            <Input name="material_unit" value={form.material_unit} onChange={handleChange} placeholder={t('placeholderUnit')} />
+            <Input name="purpose" value={form.purpose} onChange={handleChange} placeholder={t('placeholderPurpose')} />
             <div className="col-span-full flex gap-3">
               <Button type="button" variant="secondary" onClick={() => setStep(1)}>
-                Back
+                {t('back')}
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? 'Saving...' : 'Register Entry'}
+                {submitting ? t('saving') : t('registerEntry')}
               </Button>
             </div>
           </>
