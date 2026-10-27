@@ -8,19 +8,16 @@
   color: var(--weighbridge-ink);
 }
 
-.weighbridge-entry-card,
 .weighbridge-table-card {
   border: 1px solid var(--weighbridge-border);
   border-radius: 1rem;
   box-shadow: 0 0.25rem 1rem rgb(23 43 77 / 6%);
 }
 
-.weighbridge-entry-card .card-body {
-  padding: 1.125rem;
-}
-
-.weighbridge-entry-card dl dd {
-  overflow-wrap: anywhere;
+/* Keep the table on screen while a refresh runs, dimmed like the mobile cards. */
+.weighbridge-table-refreshing {
+  opacity: 0.62;
+  transition: opacity 150ms ease;
 }
 
 .weighbridge-table-card {
@@ -48,23 +45,9 @@
   padding: 0.9rem 1rem;
 }
 
-.weighbridge-empty-state,
 .weighbridge-empty-photos {
   background: #f6f9fb;
   border: 1px dashed #cbd7e1;
-}
-
-.weighbridge-empty-icon {
-  align-items: center;
-  background: #e3f2f5;
-  border-radius: 50%;
-  color: var(--weighbridge-primary);
-  display: inline-flex;
-  font-size: 0.8rem;
-  font-weight: 800;
-  height: 3rem;
-  justify-content: center;
-  width: 3rem;
 }
 
 .weighbridge-backdrop {
@@ -110,20 +93,50 @@
   outline: 0;
 }
 
-@media (max-width: 575.98px) {
-  .weighbridge-modal .modal-dialog {
-    min-height: calc(100% - 1rem);
+/* A 44x44 tap target; the icon stays the Bootstrap close glyph. Scoped to the modal so it
+   outranks Bootstrap's .btn-close, which is loaded after this file. */
+.weighbridge-modal .weighbridge-close {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: 2.75rem;
+  margin: 0 0 0 0.75rem;
+  padding: 0;
+  width: 2.75rem;
+}
+
+/* Below lg: full-width segmented control and a full-screen detail sheet. */
+@media (max-width: 991.98px) {
+  .weighbridge-segmented {
+    display: flex;
+    width: 100%;
+  }
+
+  .weighbridge-segmented .btn {
+    flex: 1 1 0;
+    min-height: 2.75rem;
+  }
+
+  .weighbridge-modal {
+    padding: 0;
   }
 
   .weighbridge-modal .modal-content {
-    border-radius: 0.85rem;
+    border-radius: 0;
   }
 
   .weighbridge-modal-header {
-    padding: 0.9rem 1rem;
+    padding: calc(0.75rem + env(safe-area-inset-top)) 1rem 0.75rem;
   }
 
   .weighbridge-modal .modal-body {
     padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Flex so the "Upload files" label centres its text at the 44px height like the real buttons. */
+  .weighbridge-modal .btn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 2.75rem;
   }
 }

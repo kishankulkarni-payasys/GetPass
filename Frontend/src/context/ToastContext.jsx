@@ -26,7 +26,8 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed right-4 top-4 z-50 flex w-full max-w-sm flex-col gap-2">
+      {/* Full width minus a gutter on phones; top-right corner from sm up. */}
+      <div className="toast-stack" aria-live="polite">
         {toasts.map((toast) => (
           <Toast key={toast.id} type={toast.type} onClose={() => dismissToast(toast.id)}>
             {toast.message}

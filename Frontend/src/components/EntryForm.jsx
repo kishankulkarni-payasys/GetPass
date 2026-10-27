@@ -7,6 +7,9 @@ import Input from './ui/Input'
 
 const QrScanner = lazy(() => import('./QrScanner'))
 
+// Below lg (992px, Bootstrap's breakpoint, not Tailwind's 1024px) buttons need a 44px tap target.
+const MOBILE_TAP_TARGET = 'max-[991.98px]:min-h-11'
+
 const initialState = {
   vehicle_number: '',
   project_name: '',
@@ -133,7 +136,7 @@ export default function EntryForm({ onSubmit }) {
           </h2>
         </div>
         {!scanning && (
-          <Button type="button" variant="secondary" size="sm" onClick={() => setScanning(true)} className="entry-scan-button">
+          <Button type="button" variant="secondary" size="sm" onClick={() => setScanning(true)} className={`entry-scan-button ${MOBILE_TAP_TARGET}`}>
             {step === 1 ? t('scanDocument') : t('scanVehicle')}
           </Button>
         )}
@@ -141,11 +144,11 @@ export default function EntryForm({ onSubmit }) {
 
       <div className="entry-step-indicator" aria-label={`Step ${step} of 2`}>
         <span className={step === 1 ? 'entry-step entry-step-active' : 'entry-step entry-step-complete'}>
-          <span>01</span> Document details
+          <span>01</span> {t('stepDocumentDetails')}
         </span>
         <span className="entry-step-line" aria-hidden="true" />
         <span className={step === 2 ? 'entry-step entry-step-active' : 'entry-step'}>
-          <span>02</span> Vehicle details
+          <span>02</span> {t('stepVehicleDetails')}
         </span>
       </div>
 
@@ -168,7 +171,7 @@ export default function EntryForm({ onSubmit }) {
             <Input name="supplier_transporter_name" value={form.supplier_transporter_name} onChange={handleChange} maxLength={MAX_LENGTHS.supplier_transporter_name} placeholder={t('placeholderSupplier')} />
             <Input name="project_name" value={form.project_name} onChange={handleChange} maxLength={MAX_LENGTHS.project_name} placeholder={t('placeholderProject')} />
             <Input name="subproject_name" value={form.subproject_name} onChange={handleChange} maxLength={MAX_LENGTHS.subproject_name} placeholder={t('placeholderSubproject')} />
-            <Button type="button" onClick={() => setStep(2)} className="col-span-full sm:col-span-1">
+            <Button type="button" onClick={() => setStep(2)} className={`col-span-full sm:col-span-1 ${MOBILE_TAP_TARGET}`}>
               {t('next')}
             </Button>
           </>
@@ -182,10 +185,10 @@ export default function EntryForm({ onSubmit }) {
             <Input name="material_unit" value={form.material_unit} onChange={handleChange} maxLength={MAX_LENGTHS.material_unit} placeholder={t('placeholderUnit')} />
             <Input name="purpose" value={form.purpose} onChange={handleChange} maxLength={MAX_LENGTHS.purpose} placeholder={t('placeholderPurpose')} />
             <div className="col-span-full flex gap-3">
-              <Button type="button" variant="secondary" onClick={() => setStep(1)}>
+              <Button type="button" variant="secondary" onClick={() => setStep(1)} className={MOBILE_TAP_TARGET}>
                 {t('back')}
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" disabled={submitting} className={MOBILE_TAP_TARGET}>
                 {submitting ? t('saving') : t('registerEntry')}
               </Button>
             </div>

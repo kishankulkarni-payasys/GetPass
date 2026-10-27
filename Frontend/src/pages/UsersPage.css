@@ -1,0 +1,55 @@
+/* Users page only: card avatar, badges, role select and desktop table. */
+
+.users-avatar {
+  align-items: center;
+  background: #e3f2f1;
+  border-radius: 50%;
+  color: #0c7775;
+  display: inline-flex;
+  font-size: 0.73rem;
+  font-weight: 750;
+  height: 2.5rem;
+  justify-content: center;
+  width: 2.5rem;
+}
+
+/* "You" stacks above Active/Inactive so long names keep their width at 320px. */
+.users-card-badges {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.users-role-label {
+  color: var(--app-muted-strong);
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 650;
+  margin-bottom: 0.35rem;
+}
+
+.users-role-select {
+  min-height: 2.75rem;
+}
+
+.users-add-toggle > button {
+  min-height: 2.75rem;
+  width: 100%;
+}
+
+/* Below lg every tap target is at least 44px. */
+@media (max-width: 991.98px) {
+  .users-create-submit {
+    min-height: 2.75rem;
+  }
+}
+
+.users-table-refreshing {
+  opacity: 0.62;
+  transition: opacity 150ms ease;
+}
+
+.users-table table {
+  min-width: 48rem;
+}

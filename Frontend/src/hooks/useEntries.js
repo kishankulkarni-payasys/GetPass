@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getEntries, createEntry, exitEntry } from '../api/entries'
+import { useLanguage } from '../context/LanguageContext'
+
+const LOAD_ERROR_KEY = 'errorLoadEntries'
 
 export function useEntries(filters = {}) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { t } = useLanguage()
+  // Stores the server's message (or null); the fallback text is translated at
+  // render time so it follows the guard's language, even after a switch.
+  const [loadError, setLoadError] = useState(null)
   // Filters can change faster than the server answers (e.g. typing a vehicle
   // number); only the newest request may update the list.
   const latestRequestRef = useRef(0)
@@ -12,12 +18,12 @@ export function useEntries(filters = {}) {
   const refresh = useCallback(async () => {
     const requestId = ++latestRequestRef.current
     setLoading(true)
-    setError(null)
+    setLoadError(null)
     try {
       const data = await getEntries(filters)
       if (requestId === latestRequestRef.current) setEntries(data)
     } catch (err) {
-      if (requestId === latestRequestRef.current) setError(err.response?.data?.detail || 'Failed to load entries')
+      if (requestId === latestRequestRef.current) setLoadError({ detail: err.response?.data?.detail || null })
     } finally {
       if (requestId === latestRequestRef.current) setLoading(false)
     }
@@ -39,6 +45,8 @@ export function useEntries(filters = {}) {
     setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)))
     return updated
   }
+
+  const error = loadError ? loadError.detail || t(LOAD_ERROR_KEY) : null
 
   return { entries, loading, error, addEntry, markExit, refresh }
 }

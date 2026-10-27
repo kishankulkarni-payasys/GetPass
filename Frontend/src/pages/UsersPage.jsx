@@ -6,9 +6,79 @@ import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
+import ListState from '../components/ui/ListState'
+import RecordCard, { RecordCardList } from '../components/ui/RecordCard'
 import Select from '../components/ui/Select'
+import './UsersPage.css'
 
 const initialForm = { username: '', password: '', full_name: '', role: 'security_guard' }
+
+const CREATE_FORM_ID = 'create-user-form'
+const MAX_INITIALS = 2
+
+const ROLE_OPTIONS = [
+  { value: 'security_guard', label: 'Security Guard' },
+  { value: 'weighbridge_operator', label: 'Weighbridge Operator' },
+  { value: 'admin', label: 'Admin' },
+]
+
+function initialsOf(fullName = '') {
+  return fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, MAX_INITIALS)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+function RoleOptions() {
+  return ROLE_OPTIONS.map(({ value, label }) => (
+    <option key={value} value={value}>{label}</option>
+  ))
+}
+
+function StatusBadges({ user, isSelf }) {
+  return (
+    <span className="users-card-badges">
+      {isSelf && <Badge tone="blue">You</Badge>}
+      <Badge tone={user.is_active ? 'green' : 'slate'}>{user.is_active ? 'Active' : 'Inactive'}</Badge>
+    </span>
+  )
+}
+
+function UserCard({ user, isSelf, isConfirmingDelete, onRoleChange, onToggleActive, onDeleteClick }) {
+  const roleSelectId = `card-role-${user.id}`
+  return (
+    <RecordCard
+      title={user.full_name}
+      subtitle={`@${user.username}`}
+      leading={<span className="users-avatar" aria-hidden="true">{initialsOf(user.full_name)}</span>}
+      badge={<StatusBadges user={user} isSelf={isSelf} />}
+      actions={
+        <>
+          <Button variant="warning" size="sm" onClick={() => onToggleActive(user)} disabled={isSelf}>
+            {user.is_active ? 'Deactivate' : 'Activate'}
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => onDeleteClick(user)} disabled={isSelf}>
+            {isConfirmingDelete ? 'Confirm delete' : 'Delete'}
+          </Button>
+        </>
+      }
+    >
+      <label className="users-role-label" htmlFor={roleSelectId}>Account role</label>
+      <Select
+        id={roleSelectId}
+        className="users-role-select w-full"
+        value={user.role}
+        disabled={isSelf}
+        onChange={(e) => onRoleChange(user, e.target.value)}
+      >
+        <RoleOptions />
+      </Select>
+    </RecordCard>
+  )
+}
 
 // How long the "Confirm delete" state stays armed before the button reverts to "Delete".
 const DELETE_CONFIRM_TIMEOUT_MS = 4000
@@ -22,6 +92,8 @@ export default function UsersPage() {
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  // Mobile only: the create form starts collapsed so the user list is visible first.
+  const [createOpen, setCreateOpen] = useState(false)
   const confirmTimerRef = useRef(null)
 
   const refresh = async () => {
@@ -55,6 +127,7 @@ export default function UsersPage() {
     try {
       await createUser(form)
       setForm(initialForm)
+      setCreateOpen(false)
       await refresh()
       showToast('User created', 'success')
     } catch (err) {
@@ -125,83 +198,66 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <Card className="user-create-card mb-6">
-        <div className="user-create-heading">
-          <div className="user-create-icon" aria-hidden="true">+</div>
-          <div>
-            <h2 className="mb-1 text-base font-bold text-slate-900">Create a team account</h2>
-            <p className="mb-0 text-sm text-slate-500">Set up sign-in details and permissions for a new user.</p>
-          </div>
-        </div>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Input name="username" value={form.username} onChange={handleChange} placeholder="Username" required />
-          <Input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Password" required />
-          <Input name="full_name" value={form.full_name} onChange={handleChange} placeholder="Full Name" required />
-          <Select name="role" value={form.role} onChange={handleChange}>
-            <option value="security_guard">Security Guard</option>
-            <option value="weighbridge_operator">Weighbridge Operator</option>
-            <option value="admin">Admin</option>
-          </Select>
-          <Button type="submit" disabled={submitting} className="col-span-full sm:col-span-1">
-            {submitting ? 'Saving...' : 'Create User'}
-          </Button>
-        </form>
-      </Card>
+      {/* Mobile only: the create form is collapsed behind this button (always shown on desktop). */}
+      <div className="users-add-toggle d-lg-none mb-4">
+        <Button
+          type="button"
+          variant={createOpen ? 'secondary' : 'primary'}
+          aria-expanded={createOpen}
+          aria-controls={CREATE_FORM_ID}
+          onClick={() => setCreateOpen((open) => !open)}
+        >
+          {createOpen ? 'Hide form' : 'Add user'}
+        </Button>
+      </div>
 
-      {loading && <p className="text-slate-500" role="status">Loading users...</p>}
-      {error && <p className="text-red-600" role="alert">{error}</p>}
-      {!loading && !error && (
-        <>
-          <div className="user-account-cards">
-            {users.map((u) => (
-              <article className="user-account-card" key={u.id}>
-                <div className="user-account-card-heading">
-                  <div className="user-account-avatar" aria-hidden="true">
-                    {u.full_name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
-                  </div>
-                  <div className="user-account-identity">
-                    <h2>{u.full_name}</h2>
-                    <span>@{u.username}</span>
-                  </div>
-                  <Badge tone={u.is_active ? 'green' : 'slate'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>
-                </div>
-                <label className="user-role-label" htmlFor={`role-${u.id}`}>Account role</label>
-                <Select
-                  className="w-full"
-                  value={u.role}
-                  disabled={u.id === currentUser.id}
-                  onChange={(e) => handleRoleChange(u, e.target.value)}
-                  id={`role-${u.id}`}
-                >
-                  <option value="security_guard">Security Guard</option>
-                  <option value="weighbridge_operator">Weighbridge Operator</option>
-                  <option value="admin">Admin</option>
-                </Select>
-                <div className="user-account-actions">
-                  <Button
-                    variant="warning"
-                    size="sm"
-                    onClick={() => handleToggleActive(u)}
-                    disabled={u.id === currentUser.id}
-                    className="flex-1"
-                  >
-                    {u.is_active ? 'Deactivate' : 'Activate'}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => handleDeleteClick(u)}
-                    disabled={u.id === currentUser.id}
-                    className="flex-1"
-                  >
-                    {confirmDeleteId === u.id ? 'Confirm delete' : 'Delete'}
-                  </Button>
-                </div>
-              </article>
-            ))}
+      <div id={CREATE_FORM_ID} className={createOpen ? '' : 'd-none d-lg-block'}>
+        <Card className="user-create-card mb-6">
+          <div className="user-create-heading">
+            <div className="user-create-icon" aria-hidden="true">+</div>
+            <div>
+              <h2 className="mb-1 text-base font-bold text-slate-900">Create a team account</h2>
+              <p className="mb-0 text-sm text-slate-500">Set up sign-in details and permissions for a new user.</p>
+            </div>
           </div>
+          <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Input name="username" value={form.username} onChange={handleChange} placeholder="Username" aria-label="Username" required />
+            <Input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Password" aria-label="Password" required />
+            <Input name="full_name" value={form.full_name} onChange={handleChange} placeholder="Full Name" aria-label="Full name" required />
+            <Select name="role" value={form.role} onChange={handleChange} aria-label="Role">
+              <RoleOptions />
+            </Select>
+            <Button type="submit" disabled={submitting} className="users-create-submit col-span-full sm:col-span-1">
+              {submitting ? 'Saving...' : 'Create User'}
+            </Button>
+          </form>
+        </Card>
+      </div>
 
-          <Card className="user-account-table overflow-x-auto p-0">
+      <ListState
+        loading={loading}
+        error={error}
+        isEmpty={users.length === 0}
+        onRetry={refresh}
+        emptyMessage="No user accounts yet."
+        loadingLabel="Loading users..."
+      >
+        <RecordCardList refreshing={loading} className="d-lg-none">
+          {users.map((u) => (
+            <UserCard
+              key={u.id}
+              user={u}
+              isSelf={u.id === currentUser.id}
+              isConfirmingDelete={confirmDeleteId === u.id}
+              onRoleChange={handleRoleChange}
+              onToggleActive={handleToggleActive}
+              onDeleteClick={handleDeleteClick}
+            />
+          ))}
+        </RecordCardList>
+
+        <div className={`d-none d-lg-block ${loading ? 'users-table-refreshing' : ''}`} aria-busy={loading || undefined}>
+          <Card className="users-table overflow-x-auto p-0">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead>
                 <tr>
@@ -223,10 +279,9 @@ export default function UsersPage() {
                         value={u.role}
                         disabled={u.id === currentUser.id}
                         onChange={(e) => handleRoleChange(u, e.target.value)}
+                        aria-label={`Role for ${u.username}`}
                       >
-                        <option value="security_guard">Security Guard</option>
-                        <option value="weighbridge_operator">Weighbridge Operator</option>
-                        <option value="admin">Admin</option>
+                        <RoleOptions />
                       </Select>
                     </td>
                     <td><Badge tone={u.is_active ? 'green' : 'slate'}>{u.is_active ? 'Active' : 'Inactive'}</Badge></td>
@@ -253,8 +308,8 @@ export default function UsersPage() {
               </tbody>
             </table>
           </Card>
-        </>
-      )}
+        </div>
+      </ListState>
     </div>
   )
 }
