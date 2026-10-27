@@ -1,0 +1,129 @@
+.weighbridge-page {
+  --weighbridge-ink: #172b4d;
+  --weighbridge-primary: #176b87;
+  --weighbridge-border: #e3eaf0;
+}
+
+.weighbridge-toolbar h2 {
+  color: var(--weighbridge-ink);
+}
+
+.weighbridge-entry-card,
+.weighbridge-table-card {
+  border: 1px solid var(--weighbridge-border);
+  border-radius: 1rem;
+  box-shadow: 0 0.25rem 1rem rgb(23 43 77 / 6%);
+}
+
+.weighbridge-entry-card .card-body {
+  padding: 1.125rem;
+}
+
+.weighbridge-entry-card dl dd {
+  overflow-wrap: anywhere;
+}
+
+.weighbridge-table-card {
+  overflow: hidden;
+}
+
+.weighbridge-table-card .table {
+  min-width: 46rem;
+}
+
+.weighbridge-table-card thead th {
+  background: #f3f7fa;
+  border-bottom-color: var(--weighbridge-border);
+  color: #536579;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  padding: 0.9rem 1rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.weighbridge-table-card tbody td {
+  color: #43566b;
+  padding: 0.9rem 1rem;
+}
+
+.weighbridge-empty-state,
+.weighbridge-empty-photos {
+  background: #f6f9fb;
+  border: 1px dashed #cbd7e1;
+}
+
+.weighbridge-empty-icon {
+  align-items: center;
+  background: #e3f2f5;
+  border-radius: 50%;
+  color: var(--weighbridge-primary);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 800;
+  height: 3rem;
+  justify-content: center;
+  width: 3rem;
+}
+
+.weighbridge-backdrop {
+  background-color: rgb(12 30 48 / 62%);
+}
+
+.weighbridge-modal {
+  padding: 0.5rem;
+}
+
+.weighbridge-modal .modal-dialog {
+  margin: 0 auto;
+}
+
+.weighbridge-modal .modal-content {
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.weighbridge-modal-header {
+  background: linear-gradient(120deg, #123b59, #176b87);
+  border-bottom: 0;
+  padding: 1rem 1.25rem;
+}
+
+.weighbridge-weight-panel {
+  background: #f3f7fa;
+  border: 1px solid var(--weighbridge-border);
+}
+
+.weighbridge-weight-panel h3 {
+  color: var(--weighbridge-ink);
+}
+
+.weighbridge-photo {
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.weighbridge-modal .btn:focus-visible,
+.weighbridge-page .btn:focus-visible {
+  box-shadow: 0 0 0 0.25rem rgb(23 107 135 / 25%);
+  outline: 0;
+}
+
+@media (max-width: 575.98px) {
+  .weighbridge-modal .modal-dialog {
+    min-height: calc(100% - 1rem);
+  }
+
+  .weighbridge-modal .modal-content {
+    border-radius: 0.85rem;
+  }
+
+  .weighbridge-modal-header {
+    padding: 0.9rem 1rem;
+  }
+
+  .weighbridge-modal .modal-body {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+}

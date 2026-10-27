@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -7,10 +7,35 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user, require_entry_write, require_weighbridge_write
 from app.database import get_db
 from app.models import User, VehicleEntry, VehicleEntryPhoto
-from app.photo_storage import InvalidPhotoError, save_entry_photo
+from app.photo_storage import (
+    InvalidPhotoError,
+    delete_entry_photos,
+    read_upload_capped,
+    validate_photo,
+    write_entry_photo,
+)
 from app.schemas import PhotoOut, VehicleEntryCreate, VehicleEntryOut, WeightUpdate
 
 router = APIRouter(prefix="/api/entries", tags=["entries"], dependencies=[Depends(get_current_user)])
+
+LIKE_ESCAPE_CHAR = "\\"
+
+
+def _to_naive_utc(value: datetime) -> datetime:
+    # Columns store naive UTC; aware inputs (e.g. "...Z") must be shifted to UTC before comparing.
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _escape_like(value: str) -> str:
+    return (
+        value.replace(LIKE_ESCAPE_CHAR, LIKE_ESCAPE_CHAR * 2)
+        .replace("%", f"{LIKE_ESCAPE_CHAR}%")
+        .replace("_", f"{LIKE_ESCAPE_CHAR}_")
+        # SQL Server treats [..] as a character class inside LIKE.
+        .replace("[", f"{LIKE_ESCAPE_CHAR}[")
+    )
 
 
 @router.post("", response_model=VehicleEntryOut, status_code=201, dependencies=[Depends(require_entry_write)])
@@ -32,11 +57,12 @@ def list_entries(
 ):
     query = db.query(VehicleEntry)
     if vehicle_number:
-        query = query.filter(VehicleEntry.vehicle_number.ilike(f"%{vehicle_number}%"))
+        pattern = f"%{_escape_like(vehicle_number)}%"
+        query = query.filter(VehicleEntry.vehicle_number.ilike(pattern, escape=LIKE_ESCAPE_CHAR))
     if date_from:
-        query = query.filter(VehicleEntry.entry_time >= date_from)
+        query = query.filter(VehicleEntry.entry_time >= _to_naive_utc(date_from))
     if date_to:
-        query = query.filter(VehicleEntry.entry_time <= date_to)
+        query = query.filter(VehicleEntry.entry_time <= _to_naive_utc(date_to))
     if weighed is True:
         query = query.filter(VehicleEntry.gross_weight.isnot(None))
     elif weighed is False:
@@ -84,6 +110,19 @@ def record_weight(
     return entry
 
 
+async def _read_and_validate_uploads(files: List[UploadFile]) -> List[Tuple[bytes, str]]:
+    # Every file is checked before any is written, so one bad file cannot leave orphans on disk.
+    validated = []
+    for upload_file in files:
+        try:
+            contents = await read_upload_capped(upload_file)
+            extension = validate_photo(upload_file.content_type, contents)
+        except InvalidPhotoError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        validated.append((contents, extension))
+    return validated
+
+
 @router.post("/{entry_id}/photos", response_model=List[PhotoOut], status_code=201, dependencies=[Depends(require_weighbridge_write)])
 async def upload_photos(
     entry_id: int,
@@ -95,18 +134,23 @@ async def upload_photos(
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
 
-    created_photos = []
-    for upload_file in files:
-        contents = await upload_file.read()
-        try:
-            file_path = save_entry_photo(entry_id, upload_file, contents)
-        except InvalidPhotoError as exc:
-            raise HTTPException(status_code=422, detail=str(exc))
-        photo = VehicleEntryPhoto(entry_id=entry_id, file_path=file_path, uploaded_by_id=current_user.id)
-        db.add(photo)
-        created_photos.append(photo)
+    validated_uploads = await _read_and_validate_uploads(files)
 
-    db.commit()
+    written_paths = []
+    created_photos = []
+    try:
+        for contents, extension in validated_uploads:
+            file_path = write_entry_photo(entry_id, contents, extension)
+            written_paths.append(file_path)
+            photo = VehicleEntryPhoto(entry_id=entry_id, file_path=file_path, uploaded_by_id=current_user.id)
+            db.add(photo)
+            created_photos.append(photo)
+        db.commit()
+    except Exception:
+        db.rollback()
+        delete_entry_photos(written_paths)
+        raise
+
     for photo in created_photos:
         db.refresh(photo)
     return created_photos

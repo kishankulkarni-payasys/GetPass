@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { ToastProvider } from './context/ToastContext'
 import Sidebar from './components/Sidebar'
+import AppHeader from './components/AppHeader'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import EntriesPage from './pages/EntriesPage'
@@ -14,10 +15,11 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <LanguageProvider>
-            <div className="min-h-screen bg-slate-50 lg:flex">
+            <div className="app-shell min-h-screen lg:flex">
               <Sidebar />
-              <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-5xl">
+              <main className="app-main min-w-0 flex-1">
+                <AppHeader />
+                <div className="app-content mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
                   <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route

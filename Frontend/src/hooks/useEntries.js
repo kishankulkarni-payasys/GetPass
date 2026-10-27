@@ -1,21 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getEntries, createEntry, exitEntry } from '../api/entries'
 
 export function useEntries(filters = {}) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  // Filters can change faster than the server answers (e.g. typing a vehicle
+  // number); only the newest request may update the list.
+  const latestRequestRef = useRef(0)
 
   const refresh = useCallback(async () => {
+    const requestId = ++latestRequestRef.current
     setLoading(true)
     setError(null)
     try {
       const data = await getEntries(filters)
-      setEntries(data)
+      if (requestId === latestRequestRef.current) setEntries(data)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load entries')
+      if (requestId === latestRequestRef.current) setError(err.response?.data?.detail || 'Failed to load entries')
     } finally {
-      setLoading(false)
+      if (requestId === latestRequestRef.current) setLoading(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filters)])

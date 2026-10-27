@@ -1,14 +1,45 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import true
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password, require_admin
 from app.database import get_db
-from app.models import User
+from app.models import User, VehicleEntry, VehicleEntryPhoto
 from app.schemas import UserCreate, UserOut, UserUpdate
 
+ADMIN_ROLE = "admin"
+LAST_ADMIN_DETAIL = "At least one active admin is required"
+
 router = APIRouter(prefix="/api/users", tags=["users"], dependencies=[Depends(require_admin)])
+
+
+def _is_active_admin(user: User) -> bool:
+    return user.role == ADMIN_ROLE and bool(user.is_active)
+
+
+def _count_other_active_admins(db: Session, user_id: int) -> int:
+    return (
+        db.query(User)
+        .filter(User.role == ADMIN_ROLE, User.is_active == true(), User.id != user_id)
+        .count()
+    )
+
+
+def _ensure_another_active_admin(db: Session, user: User) -> None:
+    # Removing the only active admin would lock everyone out of user management.
+    if _is_active_admin(user) and _count_other_active_admins(db, user.id) == 0:
+        raise HTTPException(status_code=400, detail=LAST_ADMIN_DETAIL)
+
+
+def _has_weighbridge_records(db: Session, user_id: int) -> bool:
+    weighed = db.query(VehicleEntry.id).filter(VehicleEntry.weighed_by_id == user_id).first()
+    if weighed:
+        return True
+    uploaded = db.query(VehicleEntryPhoto.id).filter(VehicleEntryPhoto.uploaded_by_id == user_id).first()
+    return uploaded is not None
 
 
 @router.post("", response_model=UserOut, status_code=201)
@@ -22,7 +53,12 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
         role=payload.role,
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent request created the same username between the check and the commit.
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Username already exists")
     db.refresh(user)
     return user
 
@@ -40,6 +76,20 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     return user
 
 
+def _validate_user_update(db: Session, user: User, payload: UserUpdate, current_user: User) -> None:
+    is_self = user.id == current_user.id
+    role_changes = payload.role is not None and payload.role != user.role
+    if is_self and payload.is_active is False:
+        raise HTTPException(status_code=400, detail="You cannot deactivate your own account")
+    if is_self and role_changes:
+        raise HTTPException(status_code=400, detail="You cannot change your own role")
+
+    loses_admin = role_changes and payload.role != ADMIN_ROLE
+    deactivates = payload.is_active is False
+    if loses_admin or deactivates:
+        _ensure_another_active_admin(db, user)
+
+
 @router.patch("/{user_id}", response_model=UserOut)
 def update_user(
     user_id: int,
@@ -50,8 +100,7 @@ def update_user(
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if user_id == current_user.id and payload.is_active is False:
-        raise HTTPException(status_code=400, detail="You cannot deactivate your own account")
+    _validate_user_update(db, user, payload, current_user)
 
     if payload.full_name is not None:
         user.full_name = payload.full_name
@@ -78,6 +127,12 @@ def delete_user(
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    _ensure_another_active_admin(db, user)
+    if _has_weighbridge_records(db, user_id):
+        raise HTTPException(
+            status_code=409,
+            detail="This user has weighbridge records and cannot be deleted. Deactivate the account instead.",
+        )
     db.delete(user)
     db.commit()
     return None

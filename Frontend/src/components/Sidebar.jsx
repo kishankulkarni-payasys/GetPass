@@ -1,14 +1,10 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import Badge from './ui/Badge'
-import Button from './ui/Button'
 
 const navLinkClasses = ({ isActive }) =>
-  `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-    isActive ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-  }`
+  `app-nav-link ${isActive ? 'app-nav-link-active' : ''}`
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
@@ -28,54 +24,85 @@ export default function Sidebar() {
 
   return (
     <>
-      <div className="flex items-center justify-between bg-slate-900 px-4 py-4 lg:hidden">
-        <span className="text-lg font-bold tracking-tight text-white">GatePass</span>
-        <button onClick={() => setIsOpen(true)} className="text-slate-300 hover:text-white" aria-label="Open menu">
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      <div className="app-mobile-bar">
+        <Link className="app-brand" to="/entries" aria-label="GatePass home">
+          <span className="app-brand-mark" aria-hidden="true">G</span>
+          <span>Gate<span>Pass</span></span>
+        </Link>
+        <button
+          type="button"
+          className="app-menu-toggle"
+          onClick={() => setIsOpen(true)}
+          aria-label="Open navigation menu"
+          aria-expanded={isOpen}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
       </div>
 
-      {isOpen && <div className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" onClick={() => setIsOpen(false)} />}
+      {isOpen && (
+        <button
+          type="button"
+          className="app-nav-scrim"
+          onClick={() => setIsOpen(false)}
+          aria-label="Close navigation menu"
+        />
+      )}
 
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-slate-900 transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between px-6 py-5">
-            <span className="text-lg font-bold tracking-tight text-white">GatePass</span>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-white lg:hidden"
-              aria-label="Close menu"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      <aside className={`app-sidebar ${isOpen ? 'app-sidebar-open' : ''}`}>
+        <div className="app-sidebar-brand-row">
+          <Link className="app-brand" to="/entries" aria-label="GatePass home">
+            <span className="app-brand-mark" aria-hidden="true">G</span>
+            <span>Gate<span>Pass</span></span>
+          </Link>
+          <button
+            type="button"
+            className="app-menu-toggle app-menu-close"
+            onClick={() => setIsOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="app-sidebar-caption">WORKSPACE</div>
+        <nav className="app-navigation" aria-label="Main navigation">
+          <NavLink to="/entries" onClick={() => setIsOpen(false)} className={navLinkClasses}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 7.5h18M6 4.5h12a2 2 0 0 1 2 2v13H4v-13a2 2 0 0 1 2-2Zm2 7h3m-3 4h8" />
+            </svg>
+            <span>Vehicle entries</span>
+          </NavLink>
+          {user.role === 'admin' && (
+            <NavLink to="/users" onClick={() => setIsOpen(false)} className={navLinkClasses}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20m7-9a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm6-6a4 4 0 0 1 0 7.75M21 20v-1.5a4 4 0 0 0-3-3.87" />
               </svg>
-            </button>
-          </div>
-          <nav className="flex flex-1 flex-col gap-1 px-3">
-            <NavLink to="/entries" onClick={() => setIsOpen(false)} className={navLinkClasses}>
-              Entries
+              <span>User management</span>
             </NavLink>
-            {user.role === 'admin' && (
-              <NavLink to="/users" onClick={() => setIsOpen(false)} className={navLinkClasses}>
-                Users
-              </NavLink>
-            )}
-          </nav>
-          <div className="border-t border-slate-800 px-6 py-4">
-            <div className="mb-3 flex items-center gap-2 text-sm text-slate-300">
-              {user.full_name}
-              <Badge tone="blue">{user.role}</Badge>
+          )}
+        </nav>
+
+        <div className="app-sidebar-footer">
+          <div className="app-sidebar-user">
+            <div className="app-user-avatar" aria-hidden="true">
+              {user.full_name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
             </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full">
-              Logout
-            </Button>
+            <div className="app-sidebar-user-copy">
+              <span className="app-sidebar-user-name">{user.full_name}</span>
+              <span className="app-sidebar-user-role">{user.role.replaceAll('_', ' ')}</span>
+            </div>
           </div>
+          <button type="button" className="app-logout-button" onClick={handleLogout}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10 17l5-5-5-5m5 5H3m9-9h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+            </svg>
+            <span>Sign out</span>
+          </button>
         </div>
       </aside>
     </>

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.auth import (
     ACCESS_TOKEN_EXPIRE_HOURS,
     COOKIE_NAME,
+    COOKIE_SECURE,
     create_access_token,
     get_current_user,
     verify_password,
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/login", response_model=UserOut)
 def login(credentials: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == credentials.username).first()
+    user = db.query(User).filter(User.username == credentials.username.strip()).first()
     if not user or not user.is_active or not verify_password(credentials.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
@@ -27,7 +28,7 @@ def login(credentials: LoginRequest, response: Response, db: Session = Depends(g
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=COOKIE_SECURE,
         max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
     )
     return user
@@ -35,7 +36,7 @@ def login(credentials: LoginRequest, response: Response, db: Session = Depends(g
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie(COOKIE_NAME)
+    response.delete_cookie(COOKIE_NAME, httponly=True, samesite="lax", secure=COOKIE_SECURE)
     return {"detail": "Logged out"}
 
 

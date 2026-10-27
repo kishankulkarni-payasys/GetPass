@@ -13,10 +13,30 @@ from app.models import User
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-insecure-secret-change-me")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8
 COOKIE_NAME = "access_token"
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").strip().lower() == "true"
+MIN_SECRET_KEY_LENGTH = 32
+MAX_PASSWORD_BYTES = 72
+# Values that have appeared in this repo; anyone who has read it could forge tokens with them.
+KNOWN_PLACEHOLDER_SECRETS = {
+    "dev-only-insecure-secret-change-me",
+    "change-this-to-a-random-secret-in-your-local-env",
+}
+
+
+def _load_secret_key() -> str:
+    secret = os.getenv("SECRET_KEY", "").strip()
+    if not secret or secret in KNOWN_PLACEHOLDER_SECRETS or len(secret) < MIN_SECRET_KEY_LENGTH:
+        raise RuntimeError(
+            f"SECRET_KEY must be set to a random value of at least {MIN_SECRET_KEY_LENGTH} characters. "
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"'
+        )
+    return secret
+
+
+SECRET_KEY = _load_secret_key()
 
 
 def hash_password(password: str) -> str:
@@ -24,7 +44,11 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    password_bytes = password.encode("utf-8")
+    # bcrypt rejects input over 72 bytes; such a password can never match a stored hash.
+    if len(password_bytes) > MAX_PASSWORD_BYTES:
+        return False
+    return bcrypt.checkpw(password_bytes, password_hash.encode("utf-8"))
 
 
 def create_access_token(user_id: int, role: str) -> str:
@@ -44,7 +68,12 @@ def get_current_user(
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
 
-    user = db.get(User, int(payload["sub"]))
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    user = db.get(User, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
     return user

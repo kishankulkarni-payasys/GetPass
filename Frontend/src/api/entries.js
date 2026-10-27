@@ -1,7 +1,15 @@
 import apiClient from './client'
 
+// Blank filters (e.g. a cleared search box) are left out so an empty string is
+// never sent to typed params like date_from, which would fail validation.
+function withoutBlankValues(filters) {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+  )
+}
+
 export async function getEntries(filters = {}) {
-  const response = await apiClient.get('/entries', { params: filters })
+  const response = await apiClient.get('/entries', { params: withoutBlankValues(filters) })
   return response.data
 }
 

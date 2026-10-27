@@ -2,9 +2,10 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.database import Base
+
+# Every timestamp is naive UTC set in Python; the API adds the "Z" when it sends them.
 
 
 class VehicleEntry(Base):
@@ -28,7 +29,7 @@ class VehicleEntry(Base):
     weight_unit = Column(String(20), nullable=True, default="kg")
     weighed_at = Column(DateTime, nullable=True)
     weighed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     photos = relationship(
         "VehicleEntryPhoto",
@@ -44,7 +45,7 @@ class VehicleEntryPhoto(Base):
     entry_id = Column(Integer, ForeignKey("vehicle_entries.id"), nullable=False, index=True)
     file_path = Column(String(255), nullable=False)
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    uploaded_at = Column(DateTime, nullable=False, server_default=func.now())
+    uploaded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class User(Base):
@@ -56,4 +57,4 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     role = Column(String(20), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

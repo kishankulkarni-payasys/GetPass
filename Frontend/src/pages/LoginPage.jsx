@@ -1,11 +1,7 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import Button from '../components/ui/Button'
-import Card from '../components/ui/Card'
-import Input from '../components/ui/Input'
-
 export default function LoginPage() {
   const { user, login } = useAuth()
   const { showToast } = useToast()
@@ -31,29 +27,71 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-2xl font-bold text-slate-900">GatePass</h1>
-        <p className="mb-6 text-sm text-slate-500">Sign in to continue</p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            required
-          />
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-          />
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? 'Logging in...' : 'Log In'}
-          </Button>
-        </form>
-      </Card>
+    <div className="login-screen">
+      <header className="login-header">
+        <Link className="app-brand app-brand-light" to="/login" aria-label="GatePass sign in">
+          <span className="app-brand-mark" aria-hidden="true">G</span>
+          <span>Gate<span>Pass</span></span>
+        </Link>
+        <span className="login-header-label">SECURE ACCESS PORTAL</span>
+      </header>
+
+      <main className="login-main">
+        <section className="login-intro">
+          <span className="login-kicker">GATE OPERATIONS, SIMPLIFIED</span>
+          <h1>Every arrival.<br /><span>Accounted for.</span></h1>
+          <p>One secure workspace for vehicle entry, site operations, and weighbridge teams.</p>
+          <div className="login-feature-list">
+            <span><i aria-hidden="true">✓</i> Clear vehicle entry records</span>
+            <span><i aria-hidden="true">✓</i> Connected weighbridge workflow</span>
+          </div>
+        </section>
+
+        <section className="login-card" aria-labelledby="login-title">
+          <div className="login-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="M12 3 5 6v5c0 4.4 2.9 8.3 7 9.5 4.1-1.2 7-5.1 7-9.5V6l-7-3Zm-3 9 2 2 4-4" />
+            </svg>
+          </div>
+          <p className="login-card-eyebrow">WELCOME BACK</p>
+          <h2 id="login-title">Sign in to GatePass</h2>
+          <p className="login-card-copy">Enter your work credentials to continue.</p>
+          <form onSubmit={handleSubmit} className="login-form">
+            <label htmlFor="login-username">Username</label>
+            <input
+              id="login-username"
+              className="form-control"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Your username"
+              autoComplete="username"
+              required
+            />
+            <label htmlFor="login-password">Password</label>
+            <input
+              id="login-password"
+              className="form-control"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              autoComplete="current-password"
+              required
+            />
+            <button type="submit" className="btn btn-primary login-submit" disabled={submitting}>
+              {submitting ? 'Signing in...' : 'Sign in securely'}
+              {!submitting && <span aria-hidden="true">→</span>}
+            </button>
+          </form>
+          <div className="login-secure-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M7 10V7a5 5 0 0 1 10 0v3m-11 0h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm6 4v3" />
+            </svg>
+            Secure access for authorized team members
+          </div>
+        </section>
+      </main>
+      <footer className="login-footer">GATEPASS <span>•</span> SITE OPERATIONS PLATFORM</footer>
     </div>
   )
 }
