@@ -7,7 +7,15 @@ from sqlalchemy.orm import Session
 
 from app.auth import hash_password, require_admin
 from app.database import get_db
-from app.models import User, VehicleEntry, VehicleEntryPhoto
+from app.models import (
+    GoodsReceipt,
+    PassAuditLog,
+    PassWeighment,
+    QualityResult,
+    User,
+    VehicleEntry,
+    VehicleEntryPhoto,
+)
 from app.schemas import UserCreate, UserOut, UserUpdate
 
 ADMIN_ROLE = "admin"
@@ -34,12 +42,25 @@ def _ensure_another_active_admin(db: Session, user: User) -> None:
         raise HTTPException(status_code=400, detail=LAST_ADMIN_DETAIL)
 
 
-def _has_weighbridge_records(db: Session, user_id: int) -> bool:
-    weighed = db.query(VehicleEntry.id).filter(VehicleEntry.weighed_by_id == user_id).first()
-    if weighed:
-        return True
-    uploaded = db.query(VehicleEntryPhoto.id).filter(VehicleEntryPhoto.uploaded_by_id == user_id).first()
-    return uploaded is not None
+# Every column that points at users.id; deleting a user referenced by any of them would
+# fail on the foreign key, so such users must be deactivated instead.
+USER_REFERENCE_COLUMNS = (
+    VehicleEntry.weighed_by_id,
+    VehicleEntry.created_by_id,
+    VehicleEntryPhoto.uploaded_by_id,
+    PassWeighment.captured_by_id,
+    QualityResult.inspected_by_id,
+    GoodsReceipt.created_by_id,
+    GoodsReceipt.approved_by_id,
+    PassAuditLog.actor_user_id,
+)
+
+
+def _has_pass_records(db: Session, user_id: int) -> bool:
+    return any(
+        db.query(column).filter(column == user_id).first() is not None
+        for column in USER_REFERENCE_COLUMNS
+    )
 
 
 @router.post("", response_model=UserOut, status_code=201)
@@ -128,7 +149,7 @@ def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     _ensure_another_active_admin(db, user)
-    if _has_weighbridge_records(db, user_id):
+    if _has_pass_records(db, user_id):
         raise HTTPException(
             status_code=409,
             detail="This user has weighbridge records and cannot be deleted. Deactivate the account instead.",

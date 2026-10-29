@@ -1,7 +1,7 @@
 .weighbridge-page {
-  --weighbridge-ink: #172b4d;
-  --weighbridge-primary: #176b87;
-  --weighbridge-border: #e3eaf0;
+  --weighbridge-ink: var(--gp-ink);
+  --weighbridge-primary: var(--gp-accent-ink);
+  --weighbridge-border: var(--gp-line);
 }
 
 .weighbridge-toolbar h2 {
@@ -11,7 +11,7 @@
 .weighbridge-table-card {
   border: 1px solid var(--weighbridge-border);
   border-radius: 1rem;
-  box-shadow: 0 0.25rem 1rem rgb(23 43 77 / 6%);
+  box-shadow: 0 0.25rem 1rem rgb(19 26 34 / 6%);
 }
 
 /* Keep the table on screen while a refresh runs, dimmed like the mobile cards. */
@@ -29,9 +29,9 @@
 }
 
 .weighbridge-table-card thead th {
-  background: #f3f7fa;
+  background: var(--gp-surface-2);
   border-bottom-color: var(--weighbridge-border);
-  color: #536579;
+  color: var(--gp-ink-2);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.045em;
@@ -41,17 +41,17 @@
 }
 
 .weighbridge-table-card tbody td {
-  color: #43566b;
+  color: var(--gp-ink-2);
   padding: 0.9rem 1rem;
 }
 
 .weighbridge-empty-photos {
-  background: #f6f9fb;
-  border: 1px dashed #cbd7e1;
+  background: var(--gp-surface-2);
+  border: 1px dashed var(--gp-line);
 }
 
 .weighbridge-backdrop {
-  background-color: rgb(12 30 48 / 62%);
+  background-color: rgb(14 22 32 / 62%);
 }
 
 .weighbridge-modal {
@@ -68,13 +68,13 @@
 }
 
 .weighbridge-modal-header {
-  background: linear-gradient(120deg, #123b59, #176b87);
+  background: var(--gp-control);
   border-bottom: 0;
   padding: 1rem 1.25rem;
 }
 
 .weighbridge-weight-panel {
-  background: #f3f7fa;
+  background: var(--gp-surface-2);
   border: 1px solid var(--weighbridge-border);
 }
 
@@ -89,8 +89,9 @@
 
 .weighbridge-modal .btn:focus-visible,
 .weighbridge-page .btn:focus-visible {
-  box-shadow: 0 0 0 0.25rem rgb(23 107 135 / 25%);
-  outline: 0;
+  box-shadow: none;
+  outline: 3px solid var(--app-focus);
+  outline-offset: 2px;
 }
 
 /* A 44x44 tap target; the icon stays the Bootstrap close glyph. Scoped to the modal so it
@@ -138,5 +139,212 @@
     display: inline-flex;
     justify-content: center;
     min-height: 2.75rem;
+  }
+}
+
+/* ---------- Weighing sheet: live readout, capture, history ---------- */
+
+.weigh-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+
+.weigh-readout {
+  background: var(--gp-control);
+  border-radius: 14px;
+  color: #fff;
+  overflow: hidden;
+  padding: 1.25rem;
+  position: relative;
+  text-align: center;
+}
+
+.weigh-readout-label {
+  color: var(--gp-on-control-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.weigh-readout-value {
+  color: #fff;
+  font-size: clamp(2.5rem, 9vw, 3.375rem);
+  font-weight: 700;
+  line-height: 1;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.weigh-readout-unit {
+  color: var(--gp-on-control-muted);
+  font-size: 1.25rem;
+  margin-left: 0.4rem;
+}
+
+.weigh-readout-stability {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  gap: 0.45rem;
+}
+
+.weigh-readout-dot {
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+}
+
+/* Light green / amber on the dark control surface (both above 7:1). */
+.weigh-readout-stable {
+  color: var(--gp-good-wash);
+}
+
+.weigh-readout-stable .weigh-readout-dot {
+  background: var(--gp-good);
+  box-shadow: 0 0 0 4px rgb(30 158 98 / 30%);
+}
+
+.weigh-readout-unstable {
+  color: var(--gp-warn-wash);
+}
+
+.weigh-readout-unstable .weigh-readout-dot {
+  background: var(--gp-warn);
+}
+
+.weigh-readout-error {
+  color: var(--gp-on-control);
+  font-size: 0.8125rem;
+}
+
+.weigh-readout-frame {
+  bottom: 0.5rem;
+  color: var(--gp-on-control-muted);
+  font-size: 0.6875rem;
+  position: absolute;
+  right: 0.75rem;
+}
+
+.weigh-capture {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+}
+
+.weigh-capture-buttons {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  width: 100%;
+}
+
+.weigh-manual {
+  background: var(--gp-surface-2);
+  border: 1px dashed var(--gp-line);
+  border-radius: var(--gp-radius);
+  padding: 0.9rem;
+  width: 100%;
+}
+
+.weigh-summary {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.weigh-summary-item {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-line);
+  border-radius: var(--gp-radius);
+  padding: 0.6rem 0.75rem;
+}
+
+.weigh-summary-net {
+  background: var(--gp-surface-2);
+  border-style: dashed;
+}
+
+.weigh-summary-item dt {
+  color: var(--gp-ink-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.weigh-summary-item dd {
+  color: var(--gp-ink);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+}
+
+.weigh-history {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.weigh-row {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-line);
+  border-radius: var(--gp-radius);
+  padding: 0.6rem 0.75rem;
+}
+
+.weigh-row-main {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.weigh-row-kind {
+  color: var(--gp-ink-2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.weigh-row-value {
+  color: var(--gp-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.weigh-row-superseded {
+  background: var(--gp-surface-2);
+}
+
+.weigh-row-superseded .weigh-row-value {
+  color: var(--gp-ink-2);
+  text-decoration: line-through;
+}
+
+.weigh-row-meta {
+  color: var(--gp-ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.weigh-cell-ellipsis {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 991.98px) {
+  .weigh-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .weigh-summary {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

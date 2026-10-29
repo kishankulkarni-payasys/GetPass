@@ -1,0 +1,93 @@
+/* Control tower (pages/DashboardPage.jsx). Colours come from the --gp-* tokens. */
+
+.dashboard-kpis {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 1.25rem;
+}
+
+/* 2 x 2 on phones, as on the mockup. */
+@media (max-width: 559.98px) {
+  .dashboard-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dashboard-kpi {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-line);
+  border-radius: var(--gp-radius);
+  min-width: 0;
+  padding: 0.8rem 0.95rem;
+}
+
+.dashboard-kpi-value {
+  color: var(--gp-ink);
+  font-family: var(--gp-font-mono);
+  font-size: 1.875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dashboard-kpi-label {
+  color: var(--gp-ink-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 0.4rem;
+}
+
+.dashboard-kpi-label:lang(en) {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-kpi-note {
+  color: var(--gp-ink-2);
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.dashboard-kpi-alert {
+  background: var(--gp-crit-wash);
+  border-color: var(--gp-crit-line);
+}
+
+.dashboard-kpi-alert .dashboard-kpi-value,
+.dashboard-kpi-alert .dashboard-kpi-note {
+  color: var(--gp-crit-ink);
+}
+
+/* Dark board header, as on the mockup; beats the shared table header style. */
+.app-content .dashboard-board thead th {
+  background: var(--gp-control);
+  border-bottom: 0;
+  color: var(--gp-on-control);
+}
+
+.app-content .dashboard-board tbody tr {
+  cursor: pointer;
+}
+
+.app-content .dashboard-board tbody tr.dashboard-row-alert td {
+  background: var(--gp-crit-wash);
+}
+
+.dashboard-dwell-over {
+  color: var(--gp-crit-ink);
+  font-weight: 700;
+}
+
+.dashboard-supplier {
+  display: block;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-card-alert {
+  background: var(--gp-crit-wash);
+  border-color: var(--gp-crit-line);
+}

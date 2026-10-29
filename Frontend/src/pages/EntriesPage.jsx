@@ -1,22 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
-import { NavLink, Navigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, useParams } from 'react-router-dom'
 import EntryForm from '../components/EntryForm'
 import EntryTable from '../components/EntryTable'
+import GateOutTab from '../components/GateOutTab'
+import PageHeading from '../components/PageHeading'
 import WeighbridgeTab from '../components/WeighbridgeTab'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
 import { useAuth } from '../context/AuthContext'
-import { useEntryLogFilters } from '../context/EntryLogFiltersContext'
+import { hasPassFilters, passFilterParams, useEntryLogFilters } from '../context/EntryLogFiltersContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useEntries } from '../hooks/useEntries'
 import {
   ENTRY_SECTIONS,
   canOpenSection,
   defaultRouteForRole,
-  entrySectionTabsForRole,
+  isEntrySection,
+  navGroupLabelKey,
+  tabDescription,
   tabLabel,
+  tabsForRole,
 } from '../navigation/navItems'
+import GrnPage from './GrnPage'
+import QualityPage from './QualityPage'
 
 // Long enough that a guard typing "MH12AB1234" triggers one request, not ten.
 const VEHICLE_SEARCH_DEBOUNCE_MS = 400
@@ -158,89 +165,71 @@ function EntryLogFilters({ vehicleSearch, dateFrom, dateTo, onChange, onClear, o
   )
 }
 
-function EntrySectionTabs({ tabs }) {
-  const { t } = useLanguage()
-
-  return (
-    <nav className="page-tabs mb-5" aria-label={t('entrySectionsAria')}>
-      {tabs.map((tab) => (
-        <NavLink
-          key={tab.id}
-          to={tab.to}
-          className={({ isActive }) =>
-            `border-b-2 px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'page-tab page-tab-active' : 'page-tab'}`
-          }
-        >
-          {tabLabel(tab, t)}
-        </NavLink>
-      ))}
-    </nav>
-  )
-}
-
-export default function EntriesPage() {
-  const { user } = useAuth()
-  const { t } = useLanguage()
-  const { section } = useParams()
-  const canMarkExit = canOpenSection(user.role, ENTRY_SECTIONS.new)
-
+function EntryLogSection() {
   const { logFilters, updateLogFilter, clearLogFilters } = useEntryLogFilters()
   const debouncedVehicleSearch = useDebouncedValue(logFilters.vehicleSearch.trim(), VEHICLE_SEARCH_DEBOUNCE_MS)
   const hasFilters = Boolean(logFilters.vehicleSearch.trim() || logFilters.dateFrom || logFilters.dateTo)
 
-  const { entries, loading, error, addEntry, markExit, refresh } = useEntries({
+  // Mounted only while the Log is open, so reopening it always loads the
+  // passes other guards registered in the meantime.
+  const { entries, loading, error, refresh } = useEntries({
     vehicle_number: debouncedVehicleSearch,
     date_from: localDayStartIso(logFilters.dateFrom),
     date_to: localDayEndIso(logFilters.dateTo),
+    ...passFilterParams(logFilters),
   })
 
-  // Other guards register entries all the time; reopening the log must show them.
-  const previousSectionRef = useRef(section)
-  useEffect(() => {
-    if (section === ENTRY_SECTIONS.log && previousSectionRef.current !== ENTRY_SECTIONS.log) refresh()
-    previousSectionRef.current = section
-  }, [section, refresh])
+  return (
+    <>
+      <EntryLogFilters
+        {...logFilters}
+        onChange={updateLogFilter}
+        onClear={clearLogFilters}
+        onRefresh={refresh}
+        refreshing={loading}
+        hasFilters={hasFilters || hasPassFilters(logFilters)}
+      />
+      <EntryTable
+        entries={entries}
+        loading={loading}
+        error={error}
+        onRetry={refresh}
+        onClearFilters={clearLogFilters}
+        hasFilters={hasFilters}
+      />
+    </>
+  )
+}
+
+const SECTION_CONTENT = {
+  [ENTRY_SECTIONS.new]: EntryForm,
+  [ENTRY_SECTIONS.log]: EntryLogSection,
+  [ENTRY_SECTIONS.gateOut]: GateOutTab,
+  [ENTRY_SECTIONS.weighbridge]: WeighbridgeTab,
+  [ENTRY_SECTIONS.quality]: QualityPage,
+  [ENTRY_SECTIONS.grn]: GrnPage,
+}
+
+// One route (/entries/:section) for every gate section. The sidebar and the
+// bottom bar switch sections; this page shows the section's heading and content.
+export default function EntriesPage() {
+  const { user } = useAuth()
+  const { t } = useLanguage()
+  const { section } = useParams()
 
   // Covers unknown sections and sections this role may not open (also after
   // an admin changes the role of a signed-in user).
-  if (!canOpenSection(user.role, section)) return <Navigate to={defaultRouteForRole(user.role)} replace />
+  if (!isEntrySection(section) || !canOpenSection(user.role, section)) {
+    return <Navigate to={defaultRouteForRole(user.role)} replace />
+  }
+
+  const tab = tabsForRole(user.role).find(({ id }) => id === section)
+  const SectionContent = SECTION_CONTENT[section]
 
   return (
-    <div className="page-screen page-entries">
-      <div className="page-heading mb-5">
-        <div>
-          <p className="page-kicker">{t('kickerGateOperations')}</p>
-          <h1 className="mb-1 text-2xl font-bold text-slate-900">{t('pageTitle')}</h1>
-          <p className="page-description">{t('entriesDescription')}</p>
-        </div>
-      </div>
-
-      <EntrySectionTabs tabs={entrySectionTabsForRole(user.role)} />
-
-      {section === ENTRY_SECTIONS.new && <EntryForm onSubmit={addEntry} />}
-      {section === ENTRY_SECTIONS.log && (
-        <>
-          <EntryLogFilters
-            {...logFilters}
-            onChange={updateLogFilter}
-            onClear={clearLogFilters}
-            onRefresh={refresh}
-            refreshing={loading}
-            hasFilters={hasFilters}
-          />
-          <EntryTable
-            entries={entries}
-            loading={loading}
-            error={error}
-            onMarkExit={markExit}
-            onRetry={refresh}
-            onClearFilters={clearLogFilters}
-            canMarkExit={canMarkExit}
-            hasFilters={hasFilters}
-          />
-        </>
-      )}
-      {section === ENTRY_SECTIONS.weighbridge && <WeighbridgeTab />}
+    <div className={`page-screen page-entries page-entries-${section}`}>
+      <PageHeading kicker={t(navGroupLabelKey(tab.group))} title={tabLabel(tab, t)} description={tabDescription(tab, t)} />
+      <SectionContent key={section} />
     </div>
   )
 }

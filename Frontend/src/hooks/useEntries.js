@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getEntries, createEntry, exitEntry } from '../api/entries'
+import { getEntries } from '../api/entries'
 import { useLanguage } from '../context/LanguageContext'
+import { apiErrorDetail, translateApiDetail } from '../i18n/apiErrors'
 
 const LOAD_ERROR_KEY = 'errorLoadEntries'
 
-export function useEntries(filters = {}) {
-  const [entries, setEntries] = useState([])
+// Loads with the newest filters only: filters can change faster than the
+// server answers (e.g. typing a vehicle number), so an older answer that
+// arrives late must not replace a newer one.
+function useLatestRequest(load, filtersKey) {
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const { t } = useLanguage()
-  // Stores the server's message (or null); the fallback text is translated at
-  // render time so it follows the guard's language, even after a switch.
+  // Holds { detail } (raw server text or null); translated at render time so
+  // the message follows a language switch.
   const [loadError, setLoadError] = useState(null)
-  // Filters can change faster than the server answers (e.g. typing a vehicle
-  // number); only the newest request may update the list.
   const latestRequestRef = useRef(0)
 
   const refresh = useCallback(async () => {
@@ -20,33 +21,44 @@ export function useEntries(filters = {}) {
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await getEntries(filters)
-      if (requestId === latestRequestRef.current) setEntries(data)
+      const result = await load()
+      if (requestId === latestRequestRef.current) setData(result)
     } catch (err) {
-      if (requestId === latestRequestRef.current) setLoadError({ detail: err.response?.data?.detail || null })
+      if (requestId === latestRequestRef.current) setLoadError({ detail: apiErrorDetail(err) })
     } finally {
       if (requestId === latestRequestRef.current) setLoading(false)
     }
+    // `load` is rebuilt every render; the serialized filters decide when to reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(filters)])
+  }, [filtersKey])
 
   useEffect(() => {
     refresh()
   }, [refresh])
 
-  const addEntry = async (entry) => {
-    const created = await createEntry(entry)
-    setEntries((prev) => [created, ...prev])
-    return created
-  }
+  return { data, loading, loadError, refresh }
+}
 
-  const markExit = async (id) => {
-    const updated = await exitEntry(id)
-    setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)))
-    return updated
-  }
+export function useEntries(filters = {}) {
+  const { t } = useLanguage()
+  const { data, loading, loadError, refresh } = useLatestRequest(() => getEntries(filters), JSON.stringify(filters))
 
-  const error = loadError ? loadError.detail || t(LOAD_ERROR_KEY) : null
+  const error = loadError ? translateApiDetail(loadError.detail, t, LOAD_ERROR_KEY) : null
+  return { entries: data ?? [], loading, error, refresh }
+}
 
-  return { entries, loading, error, addEntry, markExit, refresh }
+// Several filtered lists loaded together, e.g. the Gate-out groups:
+//   useEntryGroups({ ready: { state: 'GRN_APPROVED' }, waiting: { state: 'GATE_IN' } })
+// returns { groups: { ready: [...], waiting: [...] }, loading, error, refresh }.
+// The API takes one `state` per request in this app, so each group is its own call.
+export function useEntryGroups(groupFilters, errorFallbackKey = LOAD_ERROR_KEY) {
+  const { t } = useLanguage()
+  const { data, loading, loadError, refresh } = useLatestRequest(async () => {
+    const names = Object.keys(groupFilters)
+    const lists = await Promise.all(names.map((name) => getEntries(groupFilters[name])))
+    return Object.fromEntries(names.map((name, index) => [name, lists[index]]))
+  }, JSON.stringify(groupFilters))
+
+  const error = loadError ? translateApiDetail(loadError.detail, t, errorFallbackKey) : null
+  return { groups: data ?? {}, loading, error, refresh }
 }

@@ -10,17 +10,29 @@ import BottomTabBar from './components/BottomTabBar'
 import ProtectedRoute, { RoleHomeRedirect } from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import EntriesPage from './pages/EntriesPage'
+import DashboardPage from './pages/DashboardPage'
+import PassDetailPage from './pages/PassDetailPage'
+import ReturnPassPage from './pages/ReturnPassPage'
 import UsersPage from './pages/UsersPage'
 import AccountPage from './pages/AccountPage'
-import { ROUTES } from './navigation/navItems'
+import { ENTRY_SECTIONS, PAGE_SECTIONS, ROUTES, canOpenSection } from './navigation/navItems'
+import { useGateInQueueSync } from './hooks/useGateInQueue'
+
+// Top-level pages and the section (navItems.js) that decides who may open each.
+const PAGE_ROUTES = [
+  { path: ROUTES.dashboard, section: PAGE_SECTIONS.dashboard, Page: DashboardPage },
+  { path: ROUTES.passDetail, section: PAGE_SECTIONS.passDetail, Page: PassDetailPage },
+  { path: ROUTES.returnPass, section: PAGE_SECTIONS.returnPass, Page: ReturnPassPage },
+  { path: ROUTES.users, section: PAGE_SECTIONS.users, Page: UsersPage },
+  { path: ROUTES.account, section: PAGE_SECTIONS.account, Page: AccountPage },
+]
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path={ROUTES.login} element={<LoginPage />} />
       <Route path={ROUTES.entries} element={<RoleHomeRedirect />} />
-      {/* One route for every section so EntriesPage stays mounted (and keeps
-          its Entry Log filters) while the user switches tabs. */}
+      {/* One route for every gate section; EntriesPage checks the role per section. */}
       <Route
         path={`${ROUTES.entries}/:section`}
         element={
@@ -29,25 +41,28 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path={ROUTES.users}
-        element={
-          <ProtectedRoute adminOnly>
-            <UsersPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path={ROUTES.account}
-        element={
-          <ProtectedRoute>
-            <AccountPage />
-          </ProtectedRoute>
-        }
-      />
+      {PAGE_ROUTES.map(({ path, section, Page }) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <ProtectedRoute section={section}>
+              <Page />
+            </ProtectedRoute>
+          }
+        />
+      ))}
       <Route path="*" element={<Navigate to={ROUTES.entries} replace />} />
     </Routes>
   )
+}
+
+// Sends gate-in passes queued offline on app start and when the network
+// returns, for the roles that create passes, whichever screen is open.
+function GateInQueueSync() {
+  const { user } = useAuth()
+  useGateInQueueSync(Boolean(user) && canOpenSection(user.role, ENTRY_SECTIONS.new))
+  return null
 }
 
 function AppLayout() {
@@ -66,6 +81,7 @@ function AppLayout() {
         </div>
       </main>
       <BottomTabBar />
+      <GateInQueueSync />
     </div>
   )
 }

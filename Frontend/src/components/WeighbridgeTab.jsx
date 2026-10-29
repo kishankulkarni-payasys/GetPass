@@ -1,63 +1,84 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
-import { useEntries } from '../hooks/useEntries'
+import { usePassList } from '../hooks/usePassList'
+import { translateApiDetail } from '../i18n/apiErrors'
 import { formatCardDateTime, formatFullDateTime } from '../utils/formatDate'
+import { OPEN_PASS_STATES } from '../utils/passStates'
+import { hasGross, needsGross } from '../utils/weighRules'
 import Badge from './ui/Badge'
 import ListState from './ui/ListState'
+import PlateChip from './ui/PlateChip'
 import RecordCard, { RecordCardList } from './ui/RecordCard'
+import StatePill from './ui/StatePill'
 import WeighbridgeDetail from './WeighbridgeDetail'
+import { formatWeight } from './WeighIndicator'
 import './WeighbridgeTab.css'
 
 // The open detail sheet lives in the URL (?entry=<id>) so the phone back button closes it.
 const ENTRY_PARAM = 'entry'
 
-function isWeighed(entry) {
-  return entry.gross_weight !== null && entry.gross_weight !== undefined
+const OPEN_FILTERS = { state: OPEN_PASS_STATES }
+const ALL_FILTERS = {}
+
+// Inward vehicles waiting for their gross weight first (they block the
+// journey), then other vehicles without a weight, then the rest, oldest first.
+function weighingPriority(pass) {
+  if (needsGross(pass)) return pass.pass_type === 'inward' ? 0 : 1
+  return 2
 }
 
-function WeightBadge({ entry }) {
-  const { t } = useLanguage()
-  // The weight and its kg/ton unit are shown exactly as recorded, in every language.
-  return isWeighed(entry) ? (
-    <Badge tone="green">{entry.gross_weight} {entry.weight_unit}</Badge>
-  ) : (
-    <Badge tone="blue">{t('weighbridgePending')}</Badge>
+function sortForWeighing(passes) {
+  return [...passes].sort(
+    (a, b) => weighingPriority(a) - weighingPriority(b) || a.entry_time.localeCompare(b.entry_time),
   )
+}
+
+function WeightBadge({ pass }) {
+  const { t } = useLanguage()
+  if (hasGross(pass)) {
+    return <Badge tone="good"><span className="gp-mono">{formatWeight(pass.gross_weight)} {pass.weight_unit}</span></Badge>
+  }
+  return <Badge tone={needsGross(pass) ? 'warn' : 'neutral'}>{t('weighNoGrossYet')}</Badge>
 }
 
 function WeighbridgeFilter({ showAll, onChange }) {
   const { t } = useLanguage()
   return (
-    <div className="btn-group weighbridge-segmented" role="group" aria-label={t('weighbridgeFilterAria')}>
-      <button type="button" className={`btn ${showAll ? 'btn-outline-primary' : 'btn-primary'}`} aria-pressed={!showAll} onClick={() => onChange(false)}>
-        {t('weighbridgePending')}
+    <div className="gp-segmented" role="group" aria-label={t('weighbridgeFilterAria')}>
+      <button type="button" className={`gp-segment ${showAll ? '' : 'gp-segment-active'}`} aria-pressed={!showAll} onClick={() => onChange(false)}>
+        {t('weighOnSite')}
       </button>
-      <button type="button" className={`btn ${showAll ? 'btn-primary' : 'btn-outline-primary'}`} aria-pressed={showAll} onClick={() => onChange(true)}>
+      <button type="button" className={`gp-segment ${showAll ? 'gp-segment-active' : ''}`} aria-pressed={showAll} onClick={() => onChange(true)}>
         {t('weighbridgeAllEntries')}
       </button>
     </div>
   )
 }
 
-function WeighbridgeCards({ entries, refreshing, onOpen }) {
+function actionLabel(pass, t) {
+  return needsGross(pass) ? t('weighCaptureGross') : t('weighbridgeOpen')
+}
+
+function WeighbridgeCards({ passes, refreshing, onOpen }) {
   const { t, locale } = useLanguage()
   return (
     <RecordCardList refreshing={refreshing} className="d-lg-none">
-      {entries.map((entry) => (
+      {passes.map((pass) => (
         <RecordCard
-          key={entry.id}
+          key={pass.id}
           caption={t('colVehicle')}
-          title={entry.vehicle_number}
-          badge={<WeightBadge entry={entry} />}
+          title={<PlateChip number={pass.vehicle_number} size="md" />}
+          badge={<StatePill state={pass.pass_state} passType={pass.pass_type} erpStatus={pass.erp_status} />}
           details={[
-            { label: t('colDriver'), value: entry.driver_name },
-            { label: t('colMaterial'), value: entry.material_description },
-            { label: t('colEntry'), value: formatCardDateTime(entry.entry_time, locale) },
+            { label: t('weighbridgeColWeight'), value: <WeightBadge pass={pass} /> },
+            { label: t('fieldSupplier'), value: pass.supplier_transporter_name },
+            { label: t('colDriver'), value: pass.driver_name },
+            { label: t('colEntry'), value: formatCardDateTime(pass.entry_time, locale) },
           ]}
           actions={
-            <button type="button" className="btn btn-primary" onClick={() => onOpen(entry)}>
-              {isWeighed(entry) ? t('weighbridgeViewDetails') : t('weighbridgeRecordWeight')}
+            <button type="button" className="gp-btn gp-btn-primary gp-btn-md" onClick={() => onOpen(pass)}>
+              {actionLabel(pass, t)}
             </button>
           }
         />
@@ -66,7 +87,7 @@ function WeighbridgeCards({ entries, refreshing, onOpen }) {
   )
 }
 
-function WeighbridgeTable({ entries, refreshing, onOpen }) {
+function WeighbridgeTable({ passes, refreshing, onOpen }) {
   const { t, locale } = useLanguage()
   return (
     <div className={`d-none d-lg-block ${refreshing ? 'weighbridge-table-refreshing' : ''}`} aria-busy={refreshing || undefined}>
@@ -76,24 +97,24 @@ function WeighbridgeTable({ entries, refreshing, onOpen }) {
             <thead>
               <tr>
                 <th scope="col">{t('colVehicle')}</th>
-                <th scope="col">{t('colDriver')}</th>
-                <th scope="col">{t('colMaterial')}</th>
+                <th scope="col">{t('colStatus')}</th>
+                <th scope="col">{t('fieldSupplier')}</th>
                 <th scope="col">{t('colEntry')}</th>
                 <th scope="col">{t('weighbridgeColWeight')}</th>
                 <th scope="col" className="text-end">{t('colAction')}</th>
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="fw-semibold">{entry.vehicle_number}</td>
-                  <td>{entry.driver_name}</td>
-                  <td>{entry.material_description || '-'}</td>
-                  <td>{formatFullDateTime(entry.entry_time, locale)}</td>
-                  <td><WeightBadge entry={entry} /></td>
+              {passes.map((pass) => (
+                <tr key={pass.id}>
+                  <td><PlateChip number={pass.vehicle_number} size="sm" /></td>
+                  <td><StatePill state={pass.pass_state} passType={pass.pass_type} erpStatus={pass.erp_status} /></td>
+                  <td className="weigh-cell-ellipsis" title={pass.supplier_transporter_name ?? ''}>{pass.supplier_transporter_name || '-'}</td>
+                  <td>{formatFullDateTime(pass.entry_time, locale)}</td>
+                  <td><WeightBadge pass={pass} /></td>
                   <td className="text-end">
-                    <button type="button" className="btn btn-sm btn-primary" onClick={() => onOpen(entry)}>
-                      {t('weighbridgeOpen')}
+                    <button type="button" className="gp-btn gp-btn-primary gp-btn-sm" onClick={() => onOpen(pass)}>
+                      {actionLabel(pass, t)}
                     </button>
                   </td>
                 </tr>
@@ -106,9 +127,9 @@ function WeighbridgeTable({ entries, refreshing, onOpen }) {
   )
 }
 
-// A deep link may point at an already-weighed entry that the default Pending list filters out.
+// A deep link may point at a closed pass that the default on-site list filters out.
 // Switch to All entries once and wait for that reload; only then drop an id that is still missing.
-function useUnknownEntryFallback({ entryParam, selectedEntry, loading, error, showAll, setShowAll, dropEntryParam }) {
+function useUnknownEntryFallback({ entryParam, selectedEntry, loading, failed, showAll, setShowAll, dropEntryParam }) {
   const fallbackRef = useRef({ param: null, phase: 'idle' })
 
   useEffect(() => {
@@ -118,26 +139,26 @@ function useUnknownEntryFallback({ entryParam, selectedEntry, loading, error, sh
       if (fallback.param === entryParam && fallback.phase === 'switching') fallback.phase = 'reloading'
       return
     }
-    if (error) return
+    if (failed) return
     if (!showAll && fallback.param !== entryParam) {
       fallbackRef.current = { param: entryParam, phase: 'switching' }
       setShowAll(true)
       return
     }
-    // The All list has not started reloading yet, so the current list is still the Pending one.
+    // The All list has not started reloading yet, so the current list is still the on-site one.
     if (fallback.param === entryParam && fallback.phase === 'switching') return
     dropEntryParam()
-  }, [entryParam, selectedEntry, loading, error, showAll, setShowAll, dropEntryParam])
+  }, [entryParam, selectedEntry, loading, failed, showAll, setShowAll, dropEntryParam])
 }
 
-// Keeps the selected entry in ?entry=<id>: opening pushes a history step, so back (or Close) pops it.
-function useEntryParam({ entries, loading, error, refresh, showAll, setShowAll }) {
+// Keeps the selected pass in ?entry=<id>: opening pushes a history step, so back (or Close) pops it.
+function useEntryParam({ passes, loading, failed, refresh, showAll, setShowAll }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const pushedRef = useRef(false)
   const entryParam = searchParams.get(ENTRY_PARAM)
   const previousParamRef = useRef(entryParam)
-  const selectedEntry = entryParam ? entries.find((entry) => String(entry.id) === entryParam) : undefined
+  const selectedEntry = entryParam ? passes.find((pass) => String(pass.id) === entryParam) : undefined
 
   // The sheet just closed (Close button, Escape, or phone back), so reload to show the new weight.
   useEffect(() => {
@@ -148,13 +169,12 @@ function useEntryParam({ entries, loading, error, refresh, showAll, setShowAll }
     previousParamRef.current = entryParam
   }, [entryParam, refresh])
 
-  // A deep link to an entry that is not in any list is dropped quietly instead of showing an error.
   const dropEntryParam = useCallback(() => setSearchParams({}, { replace: true }), [setSearchParams])
-  useUnknownEntryFallback({ entryParam, selectedEntry, loading, error, showAll, setShowAll, dropEntryParam })
+  useUnknownEntryFallback({ entryParam, selectedEntry, loading, failed, showAll, setShowAll, dropEntryParam })
 
-  const openEntry = (entry) => {
+  const openEntry = (pass) => {
     pushedRef.current = true
-    setSearchParams({ [ENTRY_PARAM]: String(entry.id) })
+    setSearchParams({ [ENTRY_PARAM]: String(pass.id) })
   }
 
   const closeEntry = () => {
@@ -171,33 +191,32 @@ function useEntryParam({ entries, loading, error, refresh, showAll, setShowAll }
   return { selectedEntry, openEntry, closeEntry }
 }
 
+// Weighbridge section: vehicles on site (inward awaiting gross first) and the weighing sheet.
 export default function WeighbridgeTab() {
   const { t } = useLanguage()
   const [showAll, setShowAll] = useState(false)
-  const { entries, loading, error, refresh } = useEntries(showAll ? {} : { weighed: false })
-  const { selectedEntry, openEntry, closeEntry } = useEntryParam({ entries, loading, error, refresh, showAll, setShowAll })
+  const { passes, loading, failed, errorDetail, refresh } = usePassList(showAll ? ALL_FILTERS : OPEN_FILTERS)
+  const sorted = useMemo(() => (showAll ? passes : sortForWeighing(passes)), [passes, showAll])
+  const { selectedEntry, openEntry, closeEntry } = useEntryParam({ passes, loading, failed, refresh, showAll, setShowAll })
+  const waitingCount = passes.filter(needsGross).length
 
   return (
     <div className="weighbridge-page">
-      <div className="weighbridge-toolbar d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
-        {/* Below lg the mobile top bar already shows the "Weighbridge" title. */}
-        <div className="d-none d-lg-block">
-          <h2 className="mb-1 h5 fw-bold">{t('tabWeighbridge')}</h2>
-          <p className="mb-0 small text-secondary">{t('weighbridgeDescription')}</p>
-        </div>
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <p className="m-0 text-sm" role="status">{t('weighWaitingCount', { count: waitingCount })}</p>
         <WeighbridgeFilter showAll={showAll} onChange={setShowAll} />
       </div>
 
       <ListState
         loading={loading}
-        error={error}
-        isEmpty={entries.length === 0}
+        error={failed ? translateApiDetail(errorDetail, t, 'errorLoadEntries') : null}
+        isEmpty={sorted.length === 0}
         onRetry={refresh}
-        emptyMessage={showAll ? t('weighbridgeEmptyAll') : t('weighbridgeEmptyPending')}
+        emptyMessage={showAll ? t('weighbridgeEmptyAll') : t('weighEmptyOnSite')}
         loadingLabel={t('loadingEntries')}
       >
-        <WeighbridgeCards entries={entries} refreshing={loading} onOpen={openEntry} />
-        <WeighbridgeTable entries={entries} refreshing={loading} onOpen={openEntry} />
+        <WeighbridgeCards passes={sorted} refreshing={loading} onOpen={openEntry} />
+        <WeighbridgeTable passes={sorted} refreshing={loading} onOpen={openEntry} />
       </ListState>
 
       {selectedEntry && <WeighbridgeDetail key={selectedEntry.id} entry={selectedEntry} onClose={closeEntry} />}

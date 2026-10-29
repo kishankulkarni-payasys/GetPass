@@ -1,0 +1,82 @@
+/* Printable reject-return out-pass (pages/ReturnPassPage.jsx). The app shell
+   is hidden for print by index.css; this keeps the pass itself on one A4 page. */
+
+.return-pass-sheet {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-line);
+  border-radius: var(--gp-radius-lg);
+  color: var(--gp-ink);
+  margin: 0 auto;
+  max-width: 52rem;
+  padding: 1.25rem;
+}
+
+.return-pass-facts {
+  display: grid;
+  gap: 0.75rem 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 1rem 0;
+}
+
+@media (min-width: 768px) {
+  .return-pass-sheet {
+    padding: 2rem;
+  }
+
+  .return-pass-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.return-pass-facts dt {
+  color: var(--gp-ink-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.return-pass-facts dd {
+  font-size: 0.95rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.return-pass-signatures {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 3rem;
+}
+
+.return-pass-signature {
+  border-top: 1px solid var(--gp-ink);
+  font-size: 0.8rem;
+  padding-top: 0.35rem;
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4;
+  }
+
+  .page-return-pass .page-heading {
+    display: none;
+  }
+
+  .return-pass-sheet {
+    border: 0;
+    border-radius: 0;
+    max-width: none;
+    padding: 0;
+  }
+
+  .return-pass-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Keep each line and the signature block whole on the page. */
+  .return-pass-sheet tr,
+  .return-pass-signatures {
+    break-inside: avoid;
+  }
+}

@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useLanguage } from '../context/LanguageContext'
 import Button from './ui/Button'
 
-export default function PhotoCapture({ onCapture, onClose }) {
+// Live camera (back camera on phones). The caller uploads the blob with its photo kind.
+export default function PhotoCapture({ title, onCapture, onClose }) {
   const { t } = useLanguage()
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -48,7 +49,7 @@ export default function PhotoCapture({ onCapture, onClose }) {
   return (
     <div className="mb-4 rounded-lg border border-slate-200 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">{t('weighbridgeCapturePhoto')}</h3>
+        <h3 className="text-sm font-semibold text-slate-700">{title ?? t('weighbridgeCapturePhoto')}</h3>
         <button type="button" onClick={onClose} className="text-sm font-medium text-slate-500 hover:text-slate-700">
           {t('cancel')}
         </button>

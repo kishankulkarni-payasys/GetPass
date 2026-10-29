@@ -6,8 +6,22 @@ from fastapi.responses import JSONResponse
 
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
+from app.integrations.ocr import get_ocr_adapter
+from app.integrations.po_lookup import get_po_lookup_adapter
+from app.integrations.weighbridge_indicator import get_indicator_adapter
 from app.models import User
-from app.routers import auth, entries, uploads, users
+from app.routers import (
+    auth,
+    dashboard,
+    entries,
+    gate_in,
+    grn,
+    quality,
+    quality_integration,
+    uploads,
+    users,
+    weighments,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -17,6 +31,12 @@ PLACEHOLDER_ADMIN_PASSWORD = "ChangeMe123!"
 MIN_ADMIN_PASSWORD_LENGTH = 8
 
 app = FastAPI(title="GatePass API")
+
+# Build the adapters now so a provider set to "http" without its URL / key stops the
+# server at startup instead of failing on the first gate-in.
+get_ocr_adapter()
+get_po_lookup_adapter()
+get_indicator_adapter()
 
 Base.metadata.create_all(bind=engine)
 
@@ -57,6 +77,12 @@ app.include_router(auth.router)
 app.include_router(entries.router)
 app.include_router(users.router)
 app.include_router(uploads.router)
+app.include_router(gate_in.router)
+app.include_router(weighments.router)
+app.include_router(quality.router)
+app.include_router(quality_integration.router)
+app.include_router(grn.router)
+app.include_router(dashboard.router)
 
 
 @app.exception_handler(Exception)

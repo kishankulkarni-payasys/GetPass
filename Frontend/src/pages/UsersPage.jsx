@@ -11,15 +11,14 @@ import ListState from '../components/ui/ListState'
 import RecordCard, { RecordCardList } from '../components/ui/RecordCard'
 import Select from '../components/ui/Select'
 import { apiErrorDetail, apiErrorMessage, translateApiDetail } from '../i18n/apiErrors'
-import { ROLES, roleLabel } from '../navigation/navItems'
+import { ROLE_OPTIONS, ROLES, roleLabel } from '../navigation/navItems'
 import './UsersPage.css'
 
-const initialForm = { username: '', password: '', full_name: '', role: 'security_guard' }
+const initialForm = { username: '', password: '', full_name: '', role: ROLES.securityGuard }
 
 const CREATE_FORM_ID = 'create-user-form'
 const MAX_INITIALS = 2
 
-const ROLE_OPTIONS = [ROLES.securityGuard, ROLES.weighbridgeOperator, ROLES.admin]
 
 function initialsOf(fullName = '') {
   return fullName

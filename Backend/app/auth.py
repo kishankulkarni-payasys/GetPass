@@ -1,3 +1,4 @@
+import hmac
 import os
 from datetime import datetime, timedelta
 from typing import Optional
@@ -5,7 +6,7 @@ from typing import Optional
 import bcrypt
 import jwt
 from dotenv import load_dotenv
-from fastapi import Cookie, Depends, HTTPException
+from fastapi import Cookie, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -79,19 +80,55 @@ def get_current_user(
     return user
 
 
+ROLE_ADMIN = "admin"
+ROLE_SECURITY_GUARD = "security_guard"
+ROLE_WEIGHBRIDGE_OPERATOR = "weighbridge_operator"
+ROLE_STORE_INCHARGE = "store_incharge"
+ROLE_QUALITY_INSPECTOR = "quality_inspector"
+ROLE_SITE_SUPERVISOR = "site_supervisor"
+
+# Permission groups from the roles matrix (spec section 7). Guards are allow-lists so a new
+# role gets nothing until it is added here.
+GATE_IN_ROLES = (ROLE_ADMIN, ROLE_SECURITY_GUARD)
+GATE_OUT_ROLES = (ROLE_ADMIN, ROLE_SECURITY_GUARD)
+WEIGH_ROLES = (ROLE_ADMIN, ROLE_WEIGHBRIDGE_OPERATOR)
+STORE_ROLES = (ROLE_ADMIN, ROLE_STORE_INCHARGE)
+QUALITY_ROLES = (ROLE_ADMIN, ROLE_QUALITY_INSPECTOR)
+DASHBOARD_ROLES = (ROLE_ADMIN, ROLE_STORE_INCHARGE, ROLE_SITE_SUPERVISOR)
+GRN_LIST_ROLES = (ROLE_ADMIN, ROLE_STORE_INCHARGE, ROLE_SITE_SUPERVISOR)
+RETURN_PASS_PRINT_ROLES = (ROLE_ADMIN, ROLE_SECURITY_GUARD, ROLE_STORE_INCHARGE)
+
+ROLE_NOT_ALLOWED_DETAIL = "Your role cannot do this"
+QUALITY_INTEGRATION_OFF_DETAIL = "Quality integration is not configured"
+INVALID_SERVICE_KEY_DETAIL = "Invalid service key"
+QUALITY_SERVICE_NAME = "quality_service"
+
+
+def require_roles(*allowed_roles: str):
+    """Dependency factory: only users whose role is in `allowed_roles` pass."""
+    allowed = frozenset(allowed_roles)
+
+    def dependency(user: User = Depends(get_current_user)) -> User:
+        if user.role not in allowed:
+            raise HTTPException(status_code=403, detail=ROLE_NOT_ALLOWED_DETAIL)
+        return user
+
+    return dependency
+
+
 def require_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role != "admin":
+    if user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
 
-def require_entry_write(user: User = Depends(get_current_user)) -> User:
-    if user.role == "weighbridge_operator":
-        raise HTTPException(status_code=403, detail="Weighbridge operators cannot register or close out entries")
-    return user
-
-
-def require_weighbridge_write(user: User = Depends(get_current_user)) -> User:
-    if user.role == "security_guard":
-        raise HTTPException(status_code=403, detail="Security guards cannot record weights or upload weighbridge photos")
-    return user
+def require_quality_service(x_service_key: Optional[str] = Header(default=None)) -> str:
+    """Authenticate the external Quality app by shared secret instead of a user cookie."""
+    secret = os.getenv("QUALITY_INBOUND_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail=QUALITY_INTEGRATION_OFF_DETAIL)
+    supplied = (x_service_key or "").encode("utf-8")
+    # Constant-time comparison so the key cannot be guessed byte by byte from response times.
+    if not hmac.compare_digest(supplied, secret.encode("utf-8")):
+        raise HTTPException(status_code=401, detail=INVALID_SERVICE_KEY_DETAIL)
+    return QUALITY_SERVICE_NAME

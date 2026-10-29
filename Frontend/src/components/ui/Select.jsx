@@ -6,7 +6,7 @@ const SIZES = {
 export default function Select({ className = '', size = 'md', children, ...props }) {
   return (
     <select
-      className={`rounded-lg border border-slate-300 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${SIZES[size]} ${className}`}
+      className={`rounded-lg border border-slate-300 text-slate-900 focus:border-gp-accent focus:outline-none focus:ring-3 focus:ring-gp-accent/30 ${SIZES[size]} ${className}`}
       {...props}
     >
       {children}

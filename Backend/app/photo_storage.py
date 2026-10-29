@@ -27,6 +27,17 @@ WEBP_SIGNATURE_OFFSET = 8
 
 ENTRY_PATH_PREFIX = "entries"
 
+PHOTO_KIND_PLATE = "plate"
+PHOTO_KIND_PO_DOC = "po_doc"
+PHOTO_KIND_CHALLAN_DOC = "challan_doc"
+PHOTO_KIND_WEIGH_FRAME = "weigh_frame"
+PHOTO_KIND_VEHICLE = "vehicle"
+PHOTO_KIND_OTHER = "other"
+# Which photos each side of the gate may add (spec section 7); "other" is open to both.
+GATE_IN_PHOTO_KINDS = frozenset({PHOTO_KIND_PLATE, PHOTO_KIND_PO_DOC, PHOTO_KIND_CHALLAN_DOC, PHOTO_KIND_VEHICLE, PHOTO_KIND_OTHER})
+WEIGH_PHOTO_KINDS = frozenset({PHOTO_KIND_WEIGH_FRAME, PHOTO_KIND_OTHER})
+PHOTO_KINDS = GATE_IN_PHOTO_KINDS | WEIGH_PHOTO_KINDS
+
 
 class InvalidPhotoError(ValueError):
     pass
@@ -77,9 +88,13 @@ def write_entry_photo(entry_id: int, contents: bytes, extension: str) -> str:
 
 def delete_entry_photos(relative_paths: Iterable[str]) -> None:
     """Best-effort cleanup of files written by a request that later failed."""
+    failed_count = 0
     for relative_path in relative_paths:
         stored_path = UPLOAD_ROOT.parent / relative_path
         try:
             stored_path.unlink(missing_ok=True)
         except OSError:
-            logger.exception("Could not remove orphaned photo %s", relative_path)
+            failed_count += 1
+    # Only a count is logged: document paths must not appear in logs.
+    if failed_count:
+        logger.error("Could not remove %d orphaned photo file(s)", failed_count)

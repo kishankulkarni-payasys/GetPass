@@ -1,20 +1,24 @@
+// Styles live in index.css (.gp-btn-*) so the primary fill can use the
+// AA-safe accent ink token instead of the bright accent.
 const VARIANTS = {
-  primary: 'bg-cyan-700 hover:bg-cyan-800 text-white',
-  danger: 'bg-red-600 hover:bg-red-700 text-white',
-  warning: 'bg-amber-500 hover:bg-amber-600 text-white',
-  secondary: 'bg-slate-100 hover:bg-slate-200 text-slate-800',
-  ghost: 'bg-slate-800 hover:bg-slate-700 text-white',
+  primary: 'gp-btn-primary',
+  secondary: 'gp-btn-secondary',
+  danger: 'gp-btn-danger',
+  warning: 'gp-btn-warning',
+  ghost: 'gp-btn-ghost',
 }
 
 const SIZES = {
-  md: 'px-4 py-2 text-sm',
-  sm: 'px-2.5 py-1 text-xs',
+  sm: 'gp-btn-sm',
+  md: 'gp-btn-md',
+  lg: 'gp-btn-lg',
 }
 
-export default function Button({ variant = 'primary', size = 'md', className = '', ...props }) {
+export default function Button({ variant = 'primary', size = 'md', type = 'button', className = '', ...props }) {
   return (
     <button
-      className={`rounded-lg font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      type={type}
+      className={`gp-btn ${VARIANTS[variant] ?? VARIANTS.primary} ${SIZES[size] ?? SIZES.md} ${className}`}
       {...props}
     />
   )

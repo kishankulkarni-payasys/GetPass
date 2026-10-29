@@ -10,12 +10,18 @@ Every screen, for every role, follows the language chosen on the device
 | `languages.js` | The three languages, their own-script labels and date locales. |
 | `languageStorage.js` | The storage key and safe read/write (works when storage is blocked). |
 | `translations.js` | Merges the string modules below into one dictionary per language. |
-| `strings/common.js` | Shared words: actions, states, roles, backend error texts. Reuse before adding. |
-| `strings/shell.js` | Sidebar, header, mobile bars, Account page, sign-out. |
+| `strings/common.js` | Shared words: actions, roles, pass states, ERP / quality result pills, pass types, backend error texts. Reuse before adding. |
+| `strings/shell.js` | Sidebar, header, mobile bars and More sheet, section names and descriptions, Account page, sign-out. |
 | `strings/login.js` | Login page. |
 | `strings/entries.js` | New Entry form, Entry Log. |
 | `strings/users.js` | Users page. |
 | `strings/weighbridge.js` | Weighbridge list, detail sheet, photo capture, QR scanner. |
+| `strings/gateIn.js` | Gate-in screen (capture tiles, OCR review, challan lines, PO check, offline queue). |
+| `strings/gateOut.js` | Gate-out screen (exit sheet, cancel pass) and the printable return out-pass. |
+| `strings/quality.js` | Quality queue and result form. |
+| `strings/grn.js` | Stores / GRN screen and GRN editor. |
+| `strings/dashboard.js` | Control tower dashboard. |
+| `strings/passes.js` | Pass detail page. |
 | `apiErrors.js` | Maps known backend `detail` strings to keys in `common.js`. |
 
 ## Adding text to a screen

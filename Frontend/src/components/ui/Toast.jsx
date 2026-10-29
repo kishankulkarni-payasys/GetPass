@@ -6,6 +6,7 @@ const CLOSE_KEY = 'close'
 const STYLES = {
   success: 'border-green-500 text-green-800 bg-green-50',
   error: 'border-red-500 text-red-800 bg-red-50',
+  info: 'border-gp-info text-gp-info-ink bg-gp-info-wash',
 }
 
 export default function Toast({ type = 'success', children, onClose }) {
