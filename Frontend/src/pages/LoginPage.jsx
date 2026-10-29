@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
+import { apiErrorMessage } from '../i18n/apiErrors'
+
+// No user yet, so the language comes from the device's stored choice.
 export default function LoginPage() {
   const { user, login } = useAuth()
+  const { t } = useLanguage()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
@@ -17,10 +23,10 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       const loggedInUser = await login(username, password)
-      showToast(`Welcome back, ${loggedInUser.full_name}`, 'success')
+      showToast(t('toastWelcome', { name: loggedInUser.full_name }), 'success')
       navigate('/entries')
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Login failed', 'error')
+      showToast(apiErrorMessage(err, t, 'loginFailed'), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -29,21 +35,24 @@ export default function LoginPage() {
   return (
     <div className="login-screen">
       <header className="login-header">
-        <Link className="app-brand app-brand-light" to="/login" aria-label="GatePass sign in">
+        <Link className="app-brand app-brand-light" to="/login" aria-label={t('loginHomeAria')}>
           <span className="app-brand-mark" aria-hidden="true">G</span>
-          <span>Gate<span>Pass</span></span>
+          <span lang="en">Gate<span>Pass</span></span>
         </Link>
-        <span className="login-header-label">SECURE ACCESS PORTAL</span>
+        <div className="login-header-actions">
+          <span className="login-header-label">{t('loginHeaderLabel')}</span>
+          <LanguageSwitcher onDark />
+        </div>
       </header>
 
       <main className="login-main">
         <section className="login-intro">
-          <span className="login-kicker">GATE OPERATIONS, SIMPLIFIED</span>
-          <h1>Every arrival.<br /><span>Accounted for.</span></h1>
-          <p>One secure workspace for vehicle entry, site operations, and weighbridge teams.</p>
+          <span className="login-kicker">{t('loginKicker')}</span>
+          <h1>{t('loginHeadlineLine1')}<br /><span>{t('loginHeadlineLine2')}</span></h1>
+          <p>{t('loginIntro')}</p>
           <div className="login-feature-list">
-            <span><i aria-hidden="true">✓</i> Clear vehicle entry records</span>
-            <span><i aria-hidden="true">✓</i> Connected weighbridge workflow</span>
+            <span><i aria-hidden="true">✓</i> {t('loginFeatureRecords')}</span>
+            <span><i aria-hidden="true">✓</i> {t('loginFeatureWeighbridge')}</span>
           </div>
         </section>
 
@@ -53,33 +62,33 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" d="M12 3 5 6v5c0 4.4 2.9 8.3 7 9.5 4.1-1.2 7-5.1 7-9.5V6l-7-3Zm-3 9 2 2 4-4" />
             </svg>
           </div>
-          <p className="login-card-eyebrow">WELCOME BACK</p>
-          <h2 id="login-title">Sign in to GatePass</h2>
-          <p className="login-card-copy">Enter your work credentials to continue.</p>
+          <p className="login-card-eyebrow">{t('loginEyebrow')}</p>
+          <h2 id="login-title">{t('loginTitle')}</h2>
+          <p className="login-card-copy">{t('loginCopy')}</p>
           <form onSubmit={handleSubmit} className="login-form">
-            <label htmlFor="login-username">Username</label>
+            <label htmlFor="login-username">{t('labelUsername')}</label>
             <input
               id="login-username"
               className="form-control"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Your username"
+              placeholder={t('placeholderUsername')}
               autoComplete="username"
               required
             />
-            <label htmlFor="login-password">Password</label>
+            <label htmlFor="login-password">{t('labelPassword')}</label>
             <input
               id="login-password"
               className="form-control"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
+              placeholder={t('placeholderPassword')}
               autoComplete="current-password"
               required
             />
             <button type="submit" className="btn btn-primary login-submit" disabled={submitting}>
-              {submitting ? 'Signing in...' : 'Sign in securely'}
+              {submitting ? t('signingIn') : t('signInSecurely')}
               {!submitting && <span aria-hidden="true">→</span>}
             </button>
           </form>
@@ -87,11 +96,15 @@ export default function LoginPage() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M7 10V7a5 5 0 0 1 10 0v3m-11 0h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm6 4v3" />
             </svg>
-            Secure access for authorized team members
+            {t('loginSecureNote')}
           </div>
         </section>
       </main>
-      <footer className="login-footer">GATEPASS <span>•</span> SITE OPERATIONS PLATFORM</footer>
+      <footer className="login-footer">
+        <span lang="en" className="login-footer-brand">GatePass</span>
+        <span className="login-footer-separator" aria-hidden="true">•</span>
+        {t('loginFooterTagline')}
+      </footer>
     </div>
   )
 }

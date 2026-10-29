@@ -2,7 +2,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useSignOut } from '../hooks/useSignOut'
-import { ROLES, ROUTES, initialsOf } from '../navigation/navItems'
+import { ROLES, ROUTES, initialsOf, roleLabel } from '../navigation/navItems'
 import NavIcon from './NavIcon'
 
 const navLinkClasses = ({ isActive }) =>
@@ -20,22 +20,22 @@ export default function Sidebar() {
   return (
     <aside className="app-sidebar">
       <div className="app-sidebar-brand-row">
-        <Link className="app-brand" to={ROUTES.entries} aria-label="GatePass home">
+        <Link className="app-brand" to={ROUTES.entries} aria-label={t('navHome')}>
           <span className="app-brand-mark" aria-hidden="true">G</span>
-          <span>Gate<span>Pass</span></span>
+          <span lang="en">Gate<span>Pass</span></span>
         </Link>
       </div>
 
-      <div className="app-sidebar-caption">WORKSPACE</div>
-      <nav className="app-navigation" aria-label="Main navigation">
+      <div className="app-sidebar-caption">{t('navWorkspace')}</div>
+      <nav className="app-navigation" aria-label={t('navMain')}>
         <NavLink to={ROUTES.entries} className={navLinkClasses}>
           <NavIcon name="entries" />
-          <span>Vehicle entries</span>
+          <span>{t('navVehicleEntries')}</span>
         </NavLink>
         {user.role === ROLES.admin && (
           <NavLink to={ROUTES.users} className={navLinkClasses}>
             <NavIcon name="users" />
-            <span>User management</span>
+            <span>{t('navUserManagement')}</span>
           </NavLink>
         )}
       </nav>
@@ -45,7 +45,7 @@ export default function Sidebar() {
           <div className="app-user-avatar" aria-hidden="true">{initialsOf(user.full_name)}</div>
           <div className="app-sidebar-user-copy">
             <span className="app-sidebar-user-name">{user.full_name}</span>
-            <span className="app-sidebar-user-role">{user.role.replaceAll('_', ' ')}</span>
+            <span className="app-sidebar-user-role">{roleLabel(user.role, t)}</span>
           </div>
         </div>
         <button type="button" className="app-logout-button" onClick={signOut}>

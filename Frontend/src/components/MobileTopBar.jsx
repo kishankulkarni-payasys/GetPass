@@ -13,11 +13,12 @@ export default function MobileTopBar() {
   if (!user) return null
 
   const activeTab = findActiveTab(tabsForRole(user.role), pathname)
+  // Brand name, never translated, for routes without a tab.
   const title = activeTab ? tabLabel(activeTab, t) : 'GatePass'
 
   return (
     <header className="mobile-top-bar">
-      <Link className="mobile-top-bar-brand" to={ROUTES.entries} aria-label="GatePass home">
+      <Link className="mobile-top-bar-brand" to={ROUTES.entries} aria-label={t('navHome')}>
         <span className="app-brand-mark" aria-hidden="true">G</span>
       </Link>
       <h1 className="mobile-top-bar-title">{title}</h1>

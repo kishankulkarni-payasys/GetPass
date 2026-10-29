@@ -1,6 +1,8 @@
 // One place for the loading / empty / error states of every record list, so
 // the Entry Log, Weighbridge and Users screens behave the same way.
-// Labels default to English; translated screens pass their own strings.
+// Labels default to the shared translated words; screens pass their own
+// strings when they need something more specific.
+import { useLanguage } from '../../context/LanguageContext'
 
 const DEFAULT_SKELETON_COUNT = 3
 
@@ -66,27 +68,28 @@ export default function ListState({
   error = null,
   isEmpty = false,
   onRetry,
-  emptyMessage = 'Nothing to show yet.',
+  emptyMessage,
   emptyIcon,
   hasFilters = false,
   onClearFilters,
-  clearFiltersLabel = 'Clear filters',
-  retryLabel = 'Retry',
-  loadingLabel = 'Loading...',
+  clearFiltersLabel,
+  retryLabel,
+  loadingLabel,
   skeletonCount = DEFAULT_SKELETON_COUNT,
   children,
 }) {
+  const { t } = useLanguage()
   // An error replaces the list: stale cards next to an error would suggest they are current.
-  if (error) return <ListError message={error} onRetry={onRetry} retryLabel={retryLabel} />
-  if (isEmpty && loading) return <ListSkeleton count={skeletonCount} loadingLabel={loadingLabel} />
+  if (error) return <ListError message={error} onRetry={onRetry} retryLabel={retryLabel ?? t('retry')} />
+  if (isEmpty && loading) return <ListSkeleton count={skeletonCount} loadingLabel={loadingLabel ?? t('loading')} />
   if (isEmpty) {
     return (
       <ListEmpty
-        message={emptyMessage}
+        message={emptyMessage ?? t('listEmptyDefault')}
         icon={emptyIcon}
         hasFilters={hasFilters}
         onClearFilters={onClearFilters}
-        clearFiltersLabel={clearFiltersLabel}
+        clearFiltersLabel={clearFiltersLabel ?? t('clearFilters')}
       />
     )
   }

@@ -1,40 +1,64 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { LANGUAGE_STORAGE_KEY, readStoredLanguage, writeStoredLanguage } from '../i18n/languageStorage'
+import { DEFAULT_LANGUAGE, isSupportedLanguage, localeFor, normalizeLanguage } from '../i18n/languages'
 import { translations } from '../i18n/translations'
-import { useAuth } from './AuthContext'
 
 const LanguageContext = createContext(null)
-const STORAGE_KEY = 'getpass:language'
-const DEFAULT_LANGUAGE = 'en'
+const PLACEHOLDER_PATTERN = /\{(\w+)\}/g
 
-function readStoredLanguage() {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return stored && translations[stored] ? stored : DEFAULT_LANGUAGE
+// Variables go in as placeholders ("Welcome back, {name}") instead of string
+// joining, because word order differs between languages. An unknown
+// placeholder is left as written so the gap is visible, not silently blank.
+function fillPlaceholders(text, values) {
+  if (!values) return text
+  return text.replace(PLACEHOLDER_PATTERN, (match, name) => (name in values ? String(values[name]) : match))
 }
 
+// Falls back to English, then to the key itself, so a missing translation
+// never breaks a screen (the key-parity check stops that reaching a build).
+function lookUp(language, key) {
+  return translations[language]?.[key] ?? translations[DEFAULT_LANGUAGE][key] ?? key
+}
+
+// Keeps a second browser tab on the same device in the same language.
+function useLanguageFromOtherTabs(setLanguageState) {
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === LANGUAGE_STORAGE_KEY) setLanguageState(normalizeLanguage(event.newValue))
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [setLanguageState])
+}
+
+// Every role and the login page use the same per-device language.
 export function LanguageProvider({ children }) {
-  const { user } = useAuth()
   const [language, setLanguageState] = useState(readStoredLanguage)
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, language)
+  useLanguageFromOtherTabs(setLanguageState)
+
+  // Screen readers, hyphenation, the Devanagari font rules in index.css and
+  // the English-only uppercase kickers all key off <html lang>. Layout effect so
+  // the first paint already uses the right font rules.
+  useLayoutEffect(() => {
+    document.documentElement.lang = language
   }, [language])
 
-  const setLanguage = (lang) => {
-    if (translations[lang]) setLanguageState(lang)
-  }
+  const setLanguage = useCallback((code) => {
+    if (!isSupportedLanguage(code)) return
+    // If storage is blocked the choice still applies for this session.
+    writeStoredLanguage(code)
+    setLanguageState(code)
+  }, [])
 
-  // Only security_guard's UI actually renders in another language - everyone
-  // else always sees English, even if a guard set hi/mr earlier on this same
-  // shared browser.
-  const effectiveLanguage = user?.role === 'security_guard' ? language : DEFAULT_LANGUAGE
+  const t = useCallback((key, values) => fillPlaceholders(lookUp(language, key), values), [language])
 
-  const t = (key) => translations[effectiveLanguage]?.[key] ?? translations[DEFAULT_LANGUAGE][key] ?? key
-
-  return (
-    <LanguageContext.Provider value={{ language: effectiveLanguage, setLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
+  const value = useMemo(
+    () => ({ language, locale: localeFor(language), setLanguage, t }),
+    [language, setLanguage, t],
   )
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }
 
 export function useLanguage() {

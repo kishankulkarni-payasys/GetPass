@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
+import { useLanguage } from '../context/LanguageContext'
 
 const SCANNER_ELEMENT_ID = 'qr-scanner-region'
 
-export default function QrScanner({ title = 'Scan QR Code', onScan, onClose }) {
+export default function QrScanner({ title, onScan, onClose }) {
+  const { t } = useLanguage()
   const onScanRef = useRef(onScan)
   onScanRef.current = onScan
 
@@ -47,9 +49,9 @@ export default function QrScanner({ title = 'Scan QR Code', onScan, onClose }) {
   return (
     <div className="rounded-lg border border-slate-200 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        <button onClick={onClose} className="text-sm font-medium text-slate-500 hover:text-slate-700">
-          Cancel
+        <h3 className="text-sm font-semibold text-slate-700">{title ?? t('qrScanDefaultTitle')}</h3>
+        <button type="button" onClick={onClose} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+          {t('cancel')}
         </button>
       </div>
       <div id={SCANNER_ELEMENT_ID} />

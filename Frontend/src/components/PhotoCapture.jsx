@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
+import { useLanguage } from '../context/LanguageContext'
 import Button from './ui/Button'
 
 export default function PhotoCapture({ onCapture, onClose }) {
+  const { t } = useLanguage()
   const videoRef = useRef(null)
   const streamRef = useRef(null)
 
@@ -46,14 +48,14 @@ export default function PhotoCapture({ onCapture, onClose }) {
   return (
     <div className="mb-4 rounded-lg border border-slate-200 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Capture Photo</h3>
-        <button onClick={onClose} className="text-sm font-medium text-slate-500 hover:text-slate-700">
-          Cancel
+        <h3 className="text-sm font-semibold text-slate-700">{t('weighbridgeCapturePhoto')}</h3>
+        <button type="button" onClick={onClose} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+          {t('cancel')}
         </button>
       </div>
       <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg bg-black" />
       <Button type="button" onClick={handleCapture} className="mt-3 w-full">
-        Capture
+        {t('weighbridgeCapture')}
       </Button>
     </div>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { createUser, deleteUser, getUsers, updateUser } from '../api/users'
 import Badge from '../components/ui/Badge'
@@ -9,6 +10,8 @@ import Input from '../components/ui/Input'
 import ListState from '../components/ui/ListState'
 import RecordCard, { RecordCardList } from '../components/ui/RecordCard'
 import Select from '../components/ui/Select'
+import { apiErrorDetail, apiErrorMessage, translateApiDetail } from '../i18n/apiErrors'
+import { ROLES, roleLabel } from '../navigation/navItems'
 import './UsersPage.css'
 
 const initialForm = { username: '', password: '', full_name: '', role: 'security_guard' }
@@ -16,11 +19,7 @@ const initialForm = { username: '', password: '', full_name: '', role: 'security
 const CREATE_FORM_ID = 'create-user-form'
 const MAX_INITIALS = 2
 
-const ROLE_OPTIONS = [
-  { value: 'security_guard', label: 'Security Guard' },
-  { value: 'weighbridge_operator', label: 'Weighbridge Operator' },
-  { value: 'admin', label: 'Admin' },
-]
+const ROLE_OPTIONS = [ROLES.securityGuard, ROLES.weighbridgeOperator, ROLES.admin]
 
 function initialsOf(fullName = '') {
   return fullName
@@ -33,21 +32,29 @@ function initialsOf(fullName = '') {
 }
 
 function RoleOptions() {
-  return ROLE_OPTIONS.map(({ value, label }) => (
-    <option key={value} value={value}>{label}</option>
+  const { t } = useLanguage()
+  return ROLE_OPTIONS.map((role) => (
+    <option key={role} value={role}>{roleLabel(role, t)}</option>
   ))
 }
 
+function ActiveBadge({ isActive }) {
+  const { t } = useLanguage()
+  return <Badge tone={isActive ? 'green' : 'slate'}>{isActive ? t('usersActive') : t('usersInactive')}</Badge>
+}
+
 function StatusBadges({ user, isSelf }) {
+  const { t } = useLanguage()
   return (
     <span className="users-card-badges">
-      {isSelf && <Badge tone="blue">You</Badge>}
-      <Badge tone={user.is_active ? 'green' : 'slate'}>{user.is_active ? 'Active' : 'Inactive'}</Badge>
+      {isSelf && <Badge tone="blue">{t('usersYou')}</Badge>}
+      <ActiveBadge isActive={user.is_active} />
     </span>
   )
 }
 
 function UserCard({ user, isSelf, isConfirmingDelete, onRoleChange, onToggleActive, onDeleteClick }) {
+  const { t } = useLanguage()
   const roleSelectId = `card-role-${user.id}`
   return (
     <RecordCard
@@ -58,15 +65,15 @@ function UserCard({ user, isSelf, isConfirmingDelete, onRoleChange, onToggleActi
       actions={
         <>
           <Button variant="warning" size="sm" onClick={() => onToggleActive(user)} disabled={isSelf}>
-            {user.is_active ? 'Deactivate' : 'Activate'}
+            {user.is_active ? t('usersDeactivate') : t('usersActivate')}
           </Button>
           <Button variant="danger" size="sm" onClick={() => onDeleteClick(user)} disabled={isSelf}>
-            {isConfirmingDelete ? 'Confirm delete' : 'Delete'}
+            {isConfirmingDelete ? t('usersConfirmDelete') : t('usersDelete')}
           </Button>
         </>
       }
     >
-      <label className="users-role-label" htmlFor={roleSelectId}>Account role</label>
+      <label className="users-role-label" htmlFor={roleSelectId}>{t('usersAccountRole')}</label>
       <Select
         id={roleSelectId}
         className="users-role-select w-full"
@@ -85,10 +92,13 @@ const DELETE_CONFIRM_TIMEOUT_MS = 4000
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth()
+  const { t } = useLanguage()
   const { showToast } = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  // Holds { detail } (the raw server text or null), translated at render time
+  // so an error on screen follows a language switch.
+  const [loadError, setLoadError] = useState(null)
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
@@ -98,12 +108,12 @@ export default function UsersPage() {
 
   const refresh = async () => {
     setLoading(true)
-    setError(null)
+    setLoadError(null)
     try {
       const data = await getUsers()
       setUsers(data)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load users')
+      setLoadError({ detail: apiErrorDetail(err) })
     } finally {
       setLoading(false)
     }
@@ -129,10 +139,10 @@ export default function UsersPage() {
       setForm(initialForm)
       setCreateOpen(false)
       await refresh()
-      showToast('User created', 'success')
+      showToast(t('usersToastCreated'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
-      if (!err.isSessionExpired) showToast(err.response?.data?.detail || 'Failed to create user', 'error')
+      if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'usersErrorCreate'), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -142,10 +152,10 @@ export default function UsersPage() {
     try {
       await updateUser(targetUser.id, { is_active: !targetUser.is_active })
       await refresh()
-      showToast(targetUser.is_active ? 'User deactivated' : 'User activated', 'success')
+      showToast(t(targetUser.is_active ? 'usersToastDeactivated' : 'usersToastActivated'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
-      if (!err.isSessionExpired) showToast(err.response?.data?.detail || 'Failed to update user', 'error')
+      if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'usersErrorUpdate'), 'error')
     }
   }
 
@@ -153,10 +163,10 @@ export default function UsersPage() {
     try {
       await updateUser(targetUser.id, { role })
       await refresh()
-      showToast('User role updated', 'success')
+      showToast(t('usersToastRoleUpdated'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
-      if (!err.isSessionExpired) showToast(err.response?.data?.detail || 'Failed to update user', 'error')
+      if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'usersErrorUpdate'), 'error')
     }
   }
 
@@ -181,20 +191,22 @@ export default function UsersPage() {
     try {
       await deleteUser(targetUser.id)
       await refresh()
-      showToast('User deleted', 'success')
+      showToast(t('usersToastDeleted'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
-      if (!err.isSessionExpired) showToast(err.response?.data?.detail || 'Failed to delete user', 'error')
+      if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'usersErrorDelete'), 'error')
     }
   }
+
+  const error = loadError ? translateApiDetail(loadError.detail, t, 'usersErrorLoad') : null
 
   return (
     <div className="page-screen page-users">
       <div className="page-heading mb-5">
         <div>
-          <p className="page-kicker">ADMINISTRATION</p>
-          <h1 className="mb-1 text-2xl font-bold text-slate-900">User Management</h1>
-          <p className="page-description">Manage access, roles, and active accounts for your team.</p>
+          <p className="page-kicker">{t('headerSectionAdministration')}</p>
+          <h1 className="mb-1 text-2xl font-bold text-slate-900">{t('navUserManagement')}</h1>
+          <p className="page-description">{t('usersDescription')}</p>
         </div>
       </div>
 
@@ -207,7 +219,7 @@ export default function UsersPage() {
           aria-controls={CREATE_FORM_ID}
           onClick={() => setCreateOpen((open) => !open)}
         >
-          {createOpen ? 'Hide form' : 'Add user'}
+          {createOpen ? t('usersHideForm') : t('usersAddUser')}
         </Button>
       </div>
 
@@ -216,19 +228,19 @@ export default function UsersPage() {
           <div className="user-create-heading">
             <div className="user-create-icon" aria-hidden="true">+</div>
             <div>
-              <h2 className="mb-1 text-base font-bold text-slate-900">Create a team account</h2>
-              <p className="mb-0 text-sm text-slate-500">Set up sign-in details and permissions for a new user.</p>
+              <h2 className="mb-1 text-base font-bold text-slate-900">{t('usersCreateTitle')}</h2>
+              <p className="mb-0 text-sm text-slate-500">{t('usersCreateCopy')}</p>
             </div>
           </div>
           <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Input name="username" value={form.username} onChange={handleChange} placeholder="Username" aria-label="Username" required />
-            <Input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Password" aria-label="Password" required />
-            <Input name="full_name" value={form.full_name} onChange={handleChange} placeholder="Full Name" aria-label="Full name" required />
-            <Select name="role" value={form.role} onChange={handleChange} aria-label="Role">
+            <Input name="username" value={form.username} onChange={handleChange} placeholder={t('labelUsername')} aria-label={t('labelUsername')} required />
+            <Input name="password" type="password" value={form.password} onChange={handleChange} placeholder={t('labelPassword')} aria-label={t('labelPassword')} required />
+            <Input name="full_name" value={form.full_name} onChange={handleChange} placeholder={t('usersFullName')} aria-label={t('usersFullName')} required />
+            <Select name="role" value={form.role} onChange={handleChange} aria-label={t('labelRole')}>
               <RoleOptions />
             </Select>
             <Button type="submit" disabled={submitting} className="users-create-submit col-span-full sm:col-span-1">
-              {submitting ? 'Saving...' : 'Create User'}
+              {submitting ? t('saving') : t('usersCreateSubmit')}
             </Button>
           </form>
         </Card>
@@ -239,8 +251,8 @@ export default function UsersPage() {
         error={error}
         isEmpty={users.length === 0}
         onRetry={refresh}
-        emptyMessage="No user accounts yet."
-        loadingLabel="Loading users..."
+        emptyMessage={t('usersEmpty')}
+        loadingLabel={t('usersLoading')}
       >
         <RecordCardList refreshing={loading} className="d-lg-none">
           {users.map((u) => (
@@ -261,11 +273,11 @@ export default function UsersPage() {
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead>
                 <tr>
-                  <th>Username</th>
-                  <th>Full Name</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{t('labelUsername')}</th>
+                  <th>{t('usersFullName')}</th>
+                  <th>{t('labelRole')}</th>
+                  <th>{t('usersColStatus')}</th>
+                  <th>{t('usersColActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -279,12 +291,12 @@ export default function UsersPage() {
                         value={u.role}
                         disabled={u.id === currentUser.id}
                         onChange={(e) => handleRoleChange(u, e.target.value)}
-                        aria-label={`Role for ${u.username}`}
+                        aria-label={t('usersRoleFor', { username: u.username })}
                       >
                         <RoleOptions />
                       </Select>
                     </td>
-                    <td><Badge tone={u.is_active ? 'green' : 'slate'}>{u.is_active ? 'Active' : 'Inactive'}</Badge></td>
+                    <td><ActiveBadge isActive={u.is_active} /></td>
                     <td className="space-x-2">
                       <Button
                         variant="warning"
@@ -292,7 +304,7 @@ export default function UsersPage() {
                         onClick={() => handleToggleActive(u)}
                         disabled={u.id === currentUser.id}
                       >
-                        {u.is_active ? 'Deactivate' : 'Activate'}
+                        {u.is_active ? t('usersDeactivate') : t('usersActivate')}
                       </Button>
                       <Button
                         variant="danger"
@@ -300,7 +312,7 @@ export default function UsersPage() {
                         onClick={() => handleDeleteClick(u)}
                         disabled={u.id === currentUser.id}
                       >
-                        {confirmDeleteId === u.id ? 'Confirm delete' : 'Delete'}
+                        {confirmDeleteId === u.id ? t('usersConfirmDelete') : t('usersDelete')}
                       </Button>
                     </td>
                   </tr>

@@ -2,18 +2,19 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useFormFieldFocus } from '../hooks/useFormFieldFocus'
-import { findActiveTab, tabLabel, tabsForRole } from '../navigation/navItems'
+import { findActiveTab, tabLabel, tabShortLabel, tabsForRole } from '../navigation/navItems'
 import NavIcon from './NavIcon'
 
 // CSS shows only one of the two spans. When the short one is visible the link's
 // aria-label keeps the full label as the accessible name.
 function TabLabel({ tab, t }) {
-  if (!tab.shortLabel) return <span className="bottom-tab-label">{tabLabel(tab, t)}</span>
+  const shortLabel = tabShortLabel(tab, t)
+  if (!shortLabel) return <span className="bottom-tab-label">{tabLabel(tab, t)}</span>
 
   return (
     <>
       <span className="bottom-tab-label bottom-tab-label-full-has-short">{tabLabel(tab, t)}</span>
-      <span className="bottom-tab-label bottom-tab-label-short">{tab.shortLabel}</span>
+      <span className="bottom-tab-label bottom-tab-label-short">{shortLabel}</span>
     </>
   )
 }
@@ -52,7 +53,7 @@ export default function BottomTabBar() {
             onClick={() => handleTabClick(tab)}
             className={`bottom-tab ${isActive ? 'bottom-tab-active' : ''}`}
             tabIndex={isTyping ? -1 : undefined}
-            aria-label={tab.shortLabel ? fullLabel : undefined}
+            aria-label={tab.shortLabelKey ? fullLabel : undefined}
             title={fullLabel}
           >
             <NavIcon name={tab.icon} className="bottom-tab-icon" />

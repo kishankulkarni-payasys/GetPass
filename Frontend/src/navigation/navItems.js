@@ -30,16 +30,22 @@ const SECTION_ROLES = {
 }
 
 // Order here is the left-to-right order of the bottom tab bar.
-// `labelKey` is translated; `label` is fixed English (screens guards never see).
-// `shortLabel` replaces `label` in the bottom bar on screens narrower than 390px.
-// It is fixed English like `label`, so a tab with a `labelKey` must not get one.
+// `labelKey` is the translation key of the tab name.
+// `shortLabelKey` (optional) replaces it in the bottom bar on screens narrower
+// than 430px, for tabs whose name does not fit there in every language.
 const TAB_ITEMS = [
   { id: 'new', to: ROUTES.newEntry, labelKey: 'tabNew', icon: 'new', roles: SECTION_ROLES.new },
   { id: 'log', to: ROUTES.entryLog, labelKey: 'tabLog', icon: 'log', roles: SECTION_ROLES.log },
-  { id: 'weighbridge', to: ROUTES.weighbridge, label: 'Weighbridge', shortLabel: 'Weighing', icon: 'weighbridge', roles: SECTION_ROLES.weighbridge },
-  { id: 'users', to: ROUTES.users, label: 'Users', icon: 'users', roles: [ROLES.admin] },
+  { id: 'weighbridge', to: ROUTES.weighbridge, labelKey: 'tabWeighbridge', shortLabelKey: 'tabWeighbridgeShort', icon: 'weighbridge', roles: SECTION_ROLES.weighbridge },
+  { id: 'users', to: ROUTES.users, labelKey: 'tabUsers', icon: 'users', roles: [ROLES.admin] },
   { id: 'account', to: ROUTES.account, labelKey: 'navAccount', icon: 'account', roles: Object.values(ROLES) },
 ]
+
+const ROLE_LABEL_KEYS = {
+  [ROLES.admin]: 'roleAdmin',
+  [ROLES.securityGuard]: 'roleSecurityGuard',
+  [ROLES.weighbridgeOperator]: 'roleWeighbridgeOperator',
+}
 
 export function canOpenSection(role, section) {
   return Boolean(SECTION_ROLES[section]?.includes(role))
@@ -58,7 +64,18 @@ export function entrySectionTabsForRole(role) {
 }
 
 export function tabLabel(tab, t) {
-  return tab.labelKey ? t(tab.labelKey) : tab.label
+  return t(tab.labelKey)
+}
+
+export function tabShortLabel(tab, t) {
+  return tab.shortLabelKey ? t(tab.shortLabelKey) : null
+}
+
+// The stored role value never changes; only its display name is translated.
+// A role the frontend does not know yet still shows readably.
+export function roleLabel(role, t) {
+  const key = ROLE_LABEL_KEYS[role]
+  return key ? t(key) : String(role ?? '').replaceAll('_', ' ')
 }
 
 // The tab whose route the current path starts with ("/users/x" keeps Users active).

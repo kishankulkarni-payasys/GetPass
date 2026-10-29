@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Navigate, useParams } from 'react-router-dom'
 import EntryForm from '../components/EntryForm'
 import EntryTable from '../components/EntryTable'
-import LanguageSwitcher from '../components/LanguageSwitcher'
 import WeighbridgeTab from '../components/WeighbridgeTab'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
@@ -13,7 +12,6 @@ import { useLanguage } from '../context/LanguageContext'
 import { useEntries } from '../hooks/useEntries'
 import {
   ENTRY_SECTIONS,
-  ROLES,
   canOpenSection,
   defaultRouteForRole,
   entrySectionTabsForRole,
@@ -102,7 +100,7 @@ function EntryLogFilters({ vehicleSearch, dateFrom, dateTo, onChange, onClear, o
   const { t } = useLanguage()
   const activeDateFilterCount = [dateFrom, dateTo].filter(Boolean).length
   const [datePanelOpen, setDatePanelOpen] = useState(activeDateFilterCount > 0)
-  const filtersLabel = activeDateFilterCount > 0 ? `${t('filters')} (${activeDateFilterCount})` : t('filters')
+  const filtersLabel = activeDateFilterCount > 0 ? t('filtersCount', { count: activeDateFilterCount }) : t('filters')
   const refreshLabel = refreshing ? t('refreshing') : t('refresh')
 
   return (
@@ -164,7 +162,7 @@ function EntrySectionTabs({ tabs }) {
   const { t } = useLanguage()
 
   return (
-    <nav className="page-tabs mb-5" aria-label="Entry sections">
+    <nav className="page-tabs mb-5" aria-label={t('entrySectionsAria')}>
       {tabs.map((tab) => (
         <NavLink
           key={tab.id}
@@ -211,11 +209,10 @@ export default function EntriesPage() {
     <div className="page-screen page-entries">
       <div className="page-heading mb-5">
         <div>
-          <p className="page-kicker">GATE OPERATIONS</p>
+          <p className="page-kicker">{t('kickerGateOperations')}</p>
           <h1 className="mb-1 text-2xl font-bold text-slate-900">{t('pageTitle')}</h1>
-          <p className="page-description">Register arrivals, review site activity, and manage vehicle weighing.</p>
+          <p className="page-description">{t('entriesDescription')}</p>
         </div>
-        {user.role === ROLES.securityGuard && <LanguageSwitcher />}
       </div>
 
       <EntrySectionTabs tabs={entrySectionTabsForRole(user.role)} />

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLanguage } from '../context/LanguageContext'
 import { useEntries } from '../hooks/useEntries'
-import { formatCardDateTime } from '../utils/formatDate'
+import { formatCardDateTime, formatFullDateTime } from '../utils/formatDate'
 import Badge from './ui/Badge'
 import ListState from './ui/ListState'
 import RecordCard, { RecordCardList } from './ui/RecordCard'
@@ -16,43 +17,47 @@ function isWeighed(entry) {
 }
 
 function WeightBadge({ entry }) {
+  const { t } = useLanguage()
+  // The weight and its kg/ton unit are shown exactly as recorded, in every language.
   return isWeighed(entry) ? (
     <Badge tone="green">{entry.gross_weight} {entry.weight_unit}</Badge>
   ) : (
-    <Badge tone="blue">Pending</Badge>
+    <Badge tone="blue">{t('weighbridgePending')}</Badge>
   )
 }
 
 function WeighbridgeFilter({ showAll, onChange }) {
+  const { t } = useLanguage()
   return (
-    <div className="btn-group weighbridge-segmented" role="group" aria-label="Filter weighbridge entries">
+    <div className="btn-group weighbridge-segmented" role="group" aria-label={t('weighbridgeFilterAria')}>
       <button type="button" className={`btn ${showAll ? 'btn-outline-primary' : 'btn-primary'}`} aria-pressed={!showAll} onClick={() => onChange(false)}>
-        Pending
+        {t('weighbridgePending')}
       </button>
       <button type="button" className={`btn ${showAll ? 'btn-primary' : 'btn-outline-primary'}`} aria-pressed={showAll} onClick={() => onChange(true)}>
-        All entries
+        {t('weighbridgeAllEntries')}
       </button>
     </div>
   )
 }
 
 function WeighbridgeCards({ entries, refreshing, onOpen }) {
+  const { t, locale } = useLanguage()
   return (
     <RecordCardList refreshing={refreshing} className="d-lg-none">
       {entries.map((entry) => (
         <RecordCard
           key={entry.id}
-          caption="Vehicle"
+          caption={t('colVehicle')}
           title={entry.vehicle_number}
           badge={<WeightBadge entry={entry} />}
           details={[
-            { label: 'Driver', value: entry.driver_name },
-            { label: 'Material', value: entry.material_description },
-            { label: 'Entry', value: formatCardDateTime(entry.entry_time) },
+            { label: t('colDriver'), value: entry.driver_name },
+            { label: t('colMaterial'), value: entry.material_description },
+            { label: t('colEntry'), value: formatCardDateTime(entry.entry_time, locale) },
           ]}
           actions={
             <button type="button" className="btn btn-primary" onClick={() => onOpen(entry)}>
-              {isWeighed(entry) ? 'View details' : 'Record weight'}
+              {isWeighed(entry) ? t('weighbridgeViewDetails') : t('weighbridgeRecordWeight')}
             </button>
           }
         />
@@ -62,6 +67,7 @@ function WeighbridgeCards({ entries, refreshing, onOpen }) {
 }
 
 function WeighbridgeTable({ entries, refreshing, onOpen }) {
+  const { t, locale } = useLanguage()
   return (
     <div className={`d-none d-lg-block ${refreshing ? 'weighbridge-table-refreshing' : ''}`} aria-busy={refreshing || undefined}>
       <div className="card weighbridge-table-card">
@@ -69,12 +75,12 @@ function WeighbridgeTable({ entries, refreshing, onOpen }) {
           <table className="table table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th scope="col">Vehicle</th>
-                <th scope="col">Driver</th>
-                <th scope="col">Material</th>
-                <th scope="col">Entry</th>
-                <th scope="col">Weight</th>
-                <th scope="col" className="text-end">Action</th>
+                <th scope="col">{t('colVehicle')}</th>
+                <th scope="col">{t('colDriver')}</th>
+                <th scope="col">{t('colMaterial')}</th>
+                <th scope="col">{t('colEntry')}</th>
+                <th scope="col">{t('weighbridgeColWeight')}</th>
+                <th scope="col" className="text-end">{t('colAction')}</th>
               </tr>
             </thead>
             <tbody>
@@ -83,11 +89,11 @@ function WeighbridgeTable({ entries, refreshing, onOpen }) {
                   <td className="fw-semibold">{entry.vehicle_number}</td>
                   <td>{entry.driver_name}</td>
                   <td>{entry.material_description || '-'}</td>
-                  <td>{new Date(entry.entry_time).toLocaleString()}</td>
+                  <td>{formatFullDateTime(entry.entry_time, locale)}</td>
                   <td><WeightBadge entry={entry} /></td>
                   <td className="text-end">
                     <button type="button" className="btn btn-sm btn-primary" onClick={() => onOpen(entry)}>
-                      Open
+                      {t('weighbridgeOpen')}
                     </button>
                   </td>
                 </tr>
@@ -166,6 +172,7 @@ function useEntryParam({ entries, loading, error, refresh, showAll, setShowAll }
 }
 
 export default function WeighbridgeTab() {
+  const { t } = useLanguage()
   const [showAll, setShowAll] = useState(false)
   const { entries, loading, error, refresh } = useEntries(showAll ? {} : { weighed: false })
   const { selectedEntry, openEntry, closeEntry } = useEntryParam({ entries, loading, error, refresh, showAll, setShowAll })
@@ -175,8 +182,8 @@ export default function WeighbridgeTab() {
       <div className="weighbridge-toolbar d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
         {/* Below lg the mobile top bar already shows the "Weighbridge" title. */}
         <div className="d-none d-lg-block">
-          <h2 className="mb-1 h5 fw-bold">Weighbridge</h2>
-          <p className="mb-0 small text-secondary">Review vehicle entries and record measured weights.</p>
+          <h2 className="mb-1 h5 fw-bold">{t('tabWeighbridge')}</h2>
+          <p className="mb-0 small text-secondary">{t('weighbridgeDescription')}</p>
         </div>
         <WeighbridgeFilter showAll={showAll} onChange={setShowAll} />
       </div>
@@ -186,8 +193,8 @@ export default function WeighbridgeTab() {
         error={error}
         isEmpty={entries.length === 0}
         onRetry={refresh}
-        emptyMessage={showAll ? 'There are no weighbridge entries yet.' : 'All vehicles have a recorded weight.'}
-        loadingLabel="Loading entries..."
+        emptyMessage={showAll ? t('weighbridgeEmptyAll') : t('weighbridgeEmptyPending')}
+        loadingLabel={t('loadingEntries')}
       >
         <WeighbridgeCards entries={entries} refreshing={loading} onOpen={openEntry} />
         <WeighbridgeTable entries={entries} refreshing={loading} onOpen={openEntry} />

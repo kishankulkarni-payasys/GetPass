@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
-import { formatCardDateTime } from '../utils/formatDate'
+import { apiErrorMessage } from '../i18n/apiErrors'
+import { formatCardDateTime, formatFullDateTime } from '../utils/formatDate'
 import Badge from './ui/Badge'
 import Button from './ui/Button'
 import Card from './ui/Card'
@@ -28,7 +29,7 @@ function MarkExitButton({ isExiting, onClick, className = '' }) {
 }
 
 function EntryCard({ entry, canMarkExit, isExiting, onMarkExit }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const showMarkExit = !entry.exit_time && canMarkExit
 
   return (
@@ -40,8 +41,8 @@ function EntryCard({ entry, canMarkExit, isExiting, onMarkExit }) {
         { label: t('colDriver'), value: entry.driver_name },
         { label: t('colProject'), value: entry.project_name, secondary: entry.subproject_name },
         { label: t('colMaterial'), value: materialText(entry) },
-        { label: t('colEntry'), value: formatCardDateTime(entry.entry_time) },
-        { label: t('colExit'), value: formatCardDateTime(entry.exit_time), hidden: !entry.exit_time },
+        { label: t('colEntry'), value: formatCardDateTime(entry.entry_time, locale) },
+        { label: t('colExit'), value: formatCardDateTime(entry.exit_time, locale), hidden: !entry.exit_time },
       ]}
       actions={showMarkExit && <MarkExitButton isExiting={isExiting} onClick={() => onMarkExit(entry.id)} />}
     />
@@ -49,7 +50,7 @@ function EntryCard({ entry, canMarkExit, isExiting, onMarkExit }) {
 }
 
 function EntryDesktopTable({ entries, canMarkExit, exitingIds, onMarkExit }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
 
   return (
     <Card className="entry-desktop-table overflow-x-auto p-0">
@@ -78,12 +79,12 @@ function EntryDesktopTable({ entries, canMarkExit, exitingIds, onMarkExit }) {
                 {entry.material_description}
                 {entry.material_quantity ? ` (${entry.material_quantity} ${entry.material_unit || ''})` : ''}
               </td>
-              <td className="text-slate-500">{new Date(entry.entry_time).toLocaleString()}</td>
+              <td className="text-slate-500">{formatFullDateTime(entry.entry_time, locale)}</td>
               <td>
                 {entry.exit_time ? (
                   <div className="flex flex-col gap-1">
                     <StatusBadge entry={entry} />
-                    <span className="text-xs text-slate-400">{new Date(entry.exit_time).toLocaleString()}</span>
+                    <span className="text-xs text-slate-400">{formatFullDateTime(entry.exit_time, locale)}</span>
                   </div>
                 ) : (
                   <StatusBadge entry={entry} />
@@ -133,7 +134,7 @@ export default function EntryTable({
       showToast(t('toastMarkedExit'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
-      if (!err.isSessionExpired) showToast(err.response?.data?.detail || t('toastMarkExitFailed'), 'error')
+      if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'toastMarkExitFailed'), 'error')
     } finally {
       setRowExiting(id, false)
     }

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
+import { apiErrorMessage } from '../i18n/apiErrors'
 import Button from './ui/Button'
 import Card from './ui/Card'
 import Input from './ui/Input'
@@ -39,6 +40,7 @@ const MAX_LENGTHS = {
 }
 
 const MIN_QUANTITY = 0
+const TOTAL_STEPS = 2
 
 // QR payloads are untrusted JSON: accept only strings/numbers, capped to the field limit.
 const toScannedValue = (value, field, fallback) => {
@@ -120,7 +122,7 @@ export default function EntryForm({ onSubmit }) {
       showToast(t('toastEntryRegistered'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
-      if (!err.isSessionExpired) showToast(err.response?.data?.detail || t('toastEntryFailed'), 'error')
+      if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'toastEntryFailed'), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -130,7 +132,7 @@ export default function EntryForm({ onSubmit }) {
     <Card className="entry-form-card">
       <div className="entry-form-header mb-4">
         <div>
-          <p className="page-kicker">NEW VEHICLE PASS</p>
+          <p className="page-kicker">{t('kickerNewVehiclePass')}</p>
           <h2 className="mb-0 text-lg font-bold text-slate-900">
             {step === 1 ? t('step1Title') : t('step2Title')}
           </h2>
@@ -142,7 +144,7 @@ export default function EntryForm({ onSubmit }) {
         )}
       </div>
 
-      <div className="entry-step-indicator" aria-label={`Step ${step} of 2`}>
+      <div className="entry-step-indicator" aria-label={t('stepOfAria', { step, total: TOTAL_STEPS })}>
         <span className={step === 1 ? 'entry-step entry-step-active' : 'entry-step entry-step-complete'}>
           <span>01</span> {t('stepDocumentDetails')}
         </span>
