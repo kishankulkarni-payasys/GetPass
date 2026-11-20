@@ -45,6 +45,7 @@ const KEY_BY_API_DETAIL = {
   'Weight is required for manual entry': 'apiErrorWeightRequired',
   'Unknown photo kind': 'apiErrorUnknownPhotoKind',
   'Weighment does not belong to this pass': 'apiErrorWeighmentNotOnPass',
+  'Record both the loaded (gross) and empty (tare) weight before gate-out': 'apiErrorWeightsRequired',
   'doc_type must be plate, po or challan': 'apiErrorUnknownDocType',
   'GRN line not found': 'apiErrorGrnLineNotFound',
   'Enter at least 3 characters of the supplier name': 'apiErrorSupplierSearchShort',

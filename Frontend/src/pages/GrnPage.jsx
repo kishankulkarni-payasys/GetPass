@@ -4,6 +4,8 @@ import { GRN_WORK_GROUPS, retryGrnPost, sendToQuality, startGrn } from '../api/g
 import GrnEditor from '../components/GrnEditor'
 import Button from '../components/ui/Button'
 import ListState from '../components/ui/ListState'
+import Pagination from '../components/ui/Pagination'
+import { usePagination } from '../hooks/usePagination'
 import PlateChip from '../components/ui/PlateChip'
 import StatePill from '../components/ui/StatePill'
 import { useLanguage } from '../context/LanguageContext'
@@ -71,6 +73,7 @@ function WorkItem({ item, busy, onAction }) {
 function WorkGroup({ group, items, busyId, onAction }) {
   const { t } = useLanguage()
   const headingId = `grn-group-${group.id}`
+  const pagination = usePagination(items)
   return (
     <section className="grn-group" aria-labelledby={headingId}>
       <h2 id={headingId} className="grn-group-title">
@@ -80,11 +83,14 @@ function WorkGroup({ group, items, busyId, onAction }) {
       {items.length === 0 ? (
         <p className="grn-group-empty">{t('grnGroupEmpty')}</p>
       ) : (
-        <ul className="grn-work-list">
-          {items.map((item) => (
-            <WorkItem key={item.entry_id} item={item} busy={busyId === item.entry_id} onAction={onAction} />
-          ))}
-        </ul>
+        <>
+          <ul className="grn-work-list">
+            {pagination.pageItems.map((item) => (
+              <WorkItem key={item.entry_id} item={item} busy={busyId === item.entry_id} onAction={onAction} />
+            ))}
+          </ul>
+          <Pagination pagination={pagination} label={t(group.titleKey)} />
+        </>
       )}
     </section>
   )

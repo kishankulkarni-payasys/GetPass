@@ -5,14 +5,15 @@ import { usePassList } from '../hooks/usePassList'
 import { translateApiDetail } from '../i18n/apiErrors'
 import { formatCardDateTime, formatFullDateTime } from '../utils/formatDate'
 import { OPEN_PASS_STATES } from '../utils/passStates'
-import { hasGross, needsGross } from '../utils/weighRules'
-import Badge from './ui/Badge'
+import { needsGross, needsTare } from '../utils/weighRules'
+import PassWeights from './PassWeights'
+import { usePagination } from '../hooks/usePagination'
 import ListState from './ui/ListState'
+import Pagination from './ui/Pagination'
 import PlateChip from './ui/PlateChip'
 import RecordCard, { RecordCardList } from './ui/RecordCard'
 import StatePill from './ui/StatePill'
 import WeighbridgeDetail from './WeighbridgeDetail'
-import { formatWeight } from './WeighIndicator'
 import './WeighbridgeTab.css'
 
 // The open detail sheet lives in the URL (?entry=<id>) so the phone back button closes it.
@@ -22,10 +23,12 @@ const OPEN_FILTERS = { state: OPEN_PASS_STATES }
 const ALL_FILTERS = {}
 
 // Inward vehicles waiting for their gross weight first (they block the
-// journey), then other vehicles without a weight, then the rest, oldest first.
+// journey), then other vehicles without a weight, then vehicles waiting for
+// their empty (tare) weight before gate-out, then the rest, oldest first.
 function weighingPriority(pass) {
   if (needsGross(pass)) return pass.pass_type === 'inward' ? 0 : 1
-  return 2
+  if (needsTare(pass)) return 2
+  return 3
 }
 
 function sortForWeighing(passes) {
@@ -35,11 +38,7 @@ function sortForWeighing(passes) {
 }
 
 function WeightBadge({ pass }) {
-  const { t } = useLanguage()
-  if (hasGross(pass)) {
-    return <Badge tone="good"><span className="gp-mono">{formatWeight(pass.gross_weight)} {pass.weight_unit}</span></Badge>
-  }
-  return <Badge tone={needsGross(pass) ? 'warn' : 'neutral'}>{t('weighNoGrossYet')}</Badge>
+  return <PassWeights pass={pass} layout="inline" />
 }
 
 function WeighbridgeFilter({ showAll, onChange }) {
@@ -57,7 +56,9 @@ function WeighbridgeFilter({ showAll, onChange }) {
 }
 
 function actionLabel(pass, t) {
-  return needsGross(pass) ? t('weighCaptureGross') : t('weighbridgeOpen')
+  if (needsGross(pass)) return t('weighCaptureGross')
+  if (needsTare(pass)) return t('weighCaptureTare')
+  return t('weighbridgeOpen')
 }
 
 function WeighbridgeCards({ passes, refreshing, onOpen }) {
@@ -199,11 +200,16 @@ export default function WeighbridgeTab() {
   const sorted = useMemo(() => (showAll ? passes : sortForWeighing(passes)), [passes, showAll])
   const { selectedEntry, openEntry, closeEntry } = useEntryParam({ passes, loading, failed, refresh, showAll, setShowAll })
   const waitingCount = passes.filter(needsGross).length
+  const waitingTareCount = passes.filter(needsTare).length
+  const pagination = usePagination(sorted, { resetKey: showAll })
 
   return (
     <div className="weighbridge-page">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <p className="m-0 text-sm" role="status">{t('weighWaitingCount', { count: waitingCount })}</p>
+        <div className="text-sm" role="status">
+          <p className="m-0">{t('weighWaitingCount', { count: waitingCount })}</p>
+          <p className="m-0">{t('weighWaitingTareCount', { count: waitingTareCount })}</p>
+        </div>
         <WeighbridgeFilter showAll={showAll} onChange={setShowAll} />
       </div>
 
@@ -215,8 +221,11 @@ export default function WeighbridgeTab() {
         emptyMessage={showAll ? t('weighbridgeEmptyAll') : t('weighEmptyOnSite')}
         loadingLabel={t('loadingEntries')}
       >
-        <WeighbridgeCards passes={sorted} refreshing={loading} onOpen={openEntry} />
-        <WeighbridgeTable passes={sorted} refreshing={loading} onOpen={openEntry} />
+        <div>
+          <WeighbridgeCards passes={pagination.pageItems} refreshing={loading} onOpen={openEntry} />
+          <WeighbridgeTable passes={pagination.pageItems} refreshing={loading} onOpen={openEntry} />
+          <Pagination pagination={pagination} />
+        </div>
       </ListState>
 
       {selectedEntry && <WeighbridgeDetail key={selectedEntry.id} entry={selectedEntry} onClose={closeEntry} />}

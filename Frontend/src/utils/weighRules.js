@@ -24,6 +24,20 @@ export function needsGross(pass) {
   return isPassOpen(pass) && !hasGross(pass) && (!isInward(pass) || pass.pass_state === PASS_STATES.gateIn)
 }
 
+function isWeighed(value) {
+  return value !== null && value !== undefined
+}
+
+// Gate-out needs both the loaded (gross) and empty (tare) weight; the API refuses otherwise.
+export function hasBothWeights(pass) {
+  return isWeighed(pass.current_gross_kg) && isWeighed(pass.current_tare_kg)
+}
+
+// Gross is in, the empty weight is still missing, and the pass is at a stage where tare can be taken.
+export function needsTare(pass) {
+  return isPassOpen(pass) && isWeighed(pass.current_gross_kg) && !isWeighed(pass.current_tare_kg) && canCaptureTare(pass)
+}
+
 export function canCaptureGross(pass) {
   if (!isInward(pass)) return pass.pass_state === PASS_STATES.gateIn
   return pass.pass_state === PASS_STATES.gateIn || INWARD_GROSS_RECAPTURE_STATES.has(pass.pass_state)
@@ -43,4 +57,19 @@ const KG_PER_TON = 1000
 
 export function weightInKg(weight, unit) {
   return unit === 'ton' ? weight * KG_PER_TON : weight
+}
+
+export const WEIGH_FRAME_KIND = 'weigh_frame'
+
+// Splits weigh-frame photos by the weighing they were linked to: loaded (gross), empty (tare),
+// or neither (older photos uploaded before the split).
+export function groupWeighPhotos(pass) {
+  const kindById = new Map((pass.weighments ?? []).map((row) => [row.id, row.kind]))
+  const groups = { [WEIGHMENT_KINDS.gross]: [], [WEIGHMENT_KINDS.tare]: [], other: [] }
+  for (const photo of pass.photos ?? []) {
+    if (photo.kind !== WEIGH_FRAME_KIND) continue
+    const kind = kindById.get(photo.weighment_id)
+    groups[kind in groups ? kind : 'other'].push(photo)
+  }
+  return groups
 }

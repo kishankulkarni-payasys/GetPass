@@ -14,8 +14,11 @@ import {
   PASS_TYPES,
   passStateFilterLabelKey,
 } from '../utils/passStates'
+import PassWeights from './PassWeights'
+import { usePagination } from '../hooks/usePagination'
 import Card from './ui/Card'
 import ListState from './ui/ListState'
+import Pagination from './ui/Pagination'
 import PlateChip from './ui/PlateChip'
 import RecordCard, { RecordCardList } from './ui/RecordCard'
 import Select from './ui/Select'
@@ -94,6 +97,7 @@ function EntryCard({ entry }) {
         { label: t('colDriver'), value: entry.driver_name },
         { label: t('colProject'), value: entry.project_name, secondary: entry.subproject_name, hidden: !entry.project_name },
         { label: t('colMaterial'), value: materialText(entry) },
+        { label: t('weighColWeights'), value: <PassWeights pass={entry} layout="inline" /> },
         { label: t('colEntry'), value: formatCardDateTime(entry.entry_time, locale) },
         { label: t('colExit'), value: formatCardDateTime(entry.exit_time, locale), hidden: !entry.exit_time },
         { label: t('logColDwell'), value: <span className="gp-mono">{dwellText(entry)}</span> },
@@ -121,6 +125,7 @@ function EntryRow({ entry }) {
         <span className="block truncate text-xs text-slate-500" title={materialText(entry)}>{materialText(entry)}</span>
       </td>
       <td className="text-slate-600">{entry.driver_name}</td>
+      <td className="whitespace-nowrap"><PassWeights pass={entry} layout="inline" /></td>
       <td className="text-slate-500">
         {formatFullDateTime(entry.entry_time, locale)}
         {entry.exit_time && <span className="block text-xs">{formatFullDateTime(entry.exit_time, locale)}</span>}
@@ -144,6 +149,7 @@ function EntryDesktopTable({ entries }) {
             <th scope="col">{t('logColDocuments')}</th>
             <th scope="col">{t('colMaterial')}</th>
             <th scope="col">{t('colDriver')}</th>
+            <th scope="col">{t('weighColWeights')}</th>
             <th scope="col">{t('colEntry')}</th>
             <th scope="col">{t('logColDwell')}</th>
             <th scope="col">{t('colStatus')}</th>
@@ -216,6 +222,7 @@ export default function EntryTable({ entries, loading, error, onRetry, onClearFi
   const { logFilters } = useEntryLogFilters()
   const visibleEntries = entries.filter((entry) => matchesPassFilters(entry, logFilters))
   const anyFilter = hasFilters || hasPassFilters(logFilters)
+  const pagination = usePagination(visibleEntries, { resetKey: JSON.stringify(logFilters) })
 
   return (
     <>
@@ -233,9 +240,10 @@ export default function EntryTable({ entries, loading, error, onRetry, onClearFi
         {/* While refreshing, keep the current rows on screen (dimmed) instead of flashing a loader. */}
         <div className={`entry-results ${loading ? 'entry-results-loading' : ''}`} aria-busy={loading || undefined}>
           <RecordCardList className="entry-cards">
-            {visibleEntries.map((entry) => <EntryCard key={entry.id} entry={entry} />)}
+            {pagination.pageItems.map((entry) => <EntryCard key={entry.id} entry={entry} />)}
           </RecordCardList>
-          <EntryDesktopTable entries={visibleEntries} />
+          <EntryDesktopTable entries={pagination.pageItems} />
+          <Pagination pagination={pagination} />
         </div>
       </ListState>
     </>

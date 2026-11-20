@@ -17,6 +17,7 @@ import { translateApiDetail } from '../i18n/apiErrors'
 import { passActionsFor } from '../utils/passActions'
 import { formatFullDateTime } from '../utils/formatDate'
 import { isInward } from '../utils/passStates'
+import { groupWeighPhotos } from '../utils/weighRules'
 
 const PHOTO_KIND_KEYS = {
   plate: 'photoKindPlate',
@@ -115,9 +116,9 @@ function WeighingSection({ pass }) {
     <Section id="pass-weighing" title={t('passWeighing')}>
       <Facts
         items={[
-          { key: 'gross', label: t('weighKindGross'), value: kg(pass.current_gross_kg) },
-          { key: 'tare', label: t('weighKindTare'), value: kg(pass.current_tare_kg) },
-          { key: 'net', label: t('weighNet'), value: kg(pass.net_kg) },
+          { key: 'gross', label: t('weighLoadedGross'), value: kg(pass.current_gross_kg) ?? t('weighPending') },
+          { key: 'tare', label: t('weighEmptyTare'), value: kg(pass.current_tare_kg) ?? t('weighPending') },
+          { key: 'net', label: t('weighNetMaterial'), value: kg(pass.net_kg) ?? t('weighPending') },
         ]}
       />
       <div className="mt-3"><WeighmentHistory weighments={pass.weighments ?? []} /></div>
@@ -149,6 +150,12 @@ function QualityAndGrnSection({ pass }) {
 function PhotosSection({ pass, photosPending }) {
   const { t } = useLanguage()
   const photos = pass.photos ?? []
+  // Weighbridge photos are labelled by the weighing they show (loaded or empty vehicle).
+  const weighGroups = groupWeighPhotos(pass)
+  const weighKeyById = new Map([
+    ...weighGroups.gross.map((photo) => [photo.id, 'photoKindWeighGross']),
+    ...weighGroups.tare.map((photo) => [photo.id, 'photoKindWeighTare']),
+  ])
   return (
     <Section id="pass-photos" title={t('passPhotos')}>
       {photosPending && <div className="gp-banner gp-banner-info mb-3" role="status">{t('passPhotoUploadPending')}</div>}
@@ -157,7 +164,7 @@ function PhotosSection({ pass, photosPending }) {
       ) : (
         <ul className="pass-photos">
           {photos.map((photo) => {
-            const kindLabel = t(PHOTO_KIND_KEYS[photo.kind] ?? 'photoKindOther')
+            const kindLabel = t(weighKeyById.get(photo.id) ?? PHOTO_KIND_KEYS[photo.kind] ?? 'photoKindOther')
             return (
               <li key={photo.id}>
                 <a href={`/uploads/${photo.file_path}`} target="_blank" rel="noreferrer">

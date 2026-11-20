@@ -8,7 +8,9 @@ import { returnPassPath } from '../navigation/navItems'
 import { formatDwell } from '../utils/dwell'
 import { formatCardDateTime } from '../utils/formatDate'
 import { ERP_STATUSES, PASS_TYPES } from '../utils/passStates'
+import { hasBothWeights } from '../utils/weighRules'
 import PassActionDialog from './PassActionDialog'
+import PassWeights from './PassWeights'
 import Button from './ui/Button'
 import PlateChip from './ui/PlateChip'
 import StatePill, { ErpStatusPill } from './ui/StatePill'
@@ -173,7 +175,8 @@ export function ExitSheet({ pass, onClose, onDone }) {
   const needsConfirmation = hasRejectedMaterial(details.detail)
   const isInward = pass.pass_type === PASS_TYPES.inward
   const ready = !details.loading && details.errorDetail === null && (!isInward || details.detail)
-  const canSubmit = ready && !submitting && (!needsConfirmation || confirmed)
+  const weighed = hasBothWeights(pass)
+  const canSubmit = ready && weighed && !submitting && (!needsConfirmation || confirmed)
 
   const handleExit = async () => {
     if (!canSubmit) return
@@ -206,6 +209,11 @@ export function ExitSheet({ pass, onClose, onDone }) {
       footer={footer}
     >
       <PassFacts pass={pass} />
+      <section className="mb-4" aria-labelledby="gate-out-weights-title">
+        <h3 id="gate-out-weights-title" className="mb-2 text-sm font-bold text-slate-900">{t('gateOutWeightsTitle')}</h3>
+        <PassWeights pass={pass} />
+        {!weighed && <p role="alert" className="mb-0 mt-2 text-sm font-semibold text-gp-warn-ink">{t('apiErrorWeightsRequired')}</p>}
+      </section>
       <ExitSheetBody pass={pass} details={details} confirmed={confirmed} onConfirmChange={setConfirmed} />
     </PassActionDialog>
   )

@@ -5,10 +5,14 @@ import { formatDwell } from '../utils/dwell'
 import { formatCardDateTime } from '../utils/formatDate'
 import { PASS_STATES, PASS_TYPES } from '../utils/passStates'
 import { normalizePlate } from '../utils/plate'
+import { hasBothWeights } from '../utils/weighRules'
+import PassWeights from './PassWeights'
 import { CancelSheet, ExitSheet } from './GateOutSheets'
 import Button from './ui/Button'
 import Input from './ui/Input'
+import { usePagination } from '../hooks/usePagination'
 import ListState from './ui/ListState'
+import Pagination from './ui/Pagination'
 import PlateChip from './ui/PlateChip'
 import RecordCard, { RecordCardList } from './ui/RecordCard'
 import StatePill from './ui/StatePill'
@@ -37,6 +41,8 @@ function GateOutCard({ pass, canLetOut, onOpen }) {
   const { t, locale } = useLanguage()
   const isInward = pass.pass_type === PASS_TYPES.inward
   const canCancel = pass.pass_state === PASS_STATES.gateIn
+  // Gate-out needs the loaded and the empty weight; the API refuses otherwise.
+  const weighed = hasBothWeights(pass)
   return (
     <RecordCard
       caption={t(isInward ? 'passTypeInward' : 'passTypeGeneral')}
@@ -49,6 +55,7 @@ function GateOutCard({ pass, canLetOut, onOpen }) {
         { label: t('gateOutLabelDriver'), value: pass.driver_name },
         { label: t('gateOutLabelEntry'), value: formatCardDateTime(pass.entry_time, locale) },
         { label: t('gateOutLabelDwell'), value: <span className="gp-mono">{formatDwell(pass.dwell_minutes)}</span> },
+        { label: t('weighColWeights'), value: <PassWeights pass={pass} layout="inline" /> },
       ]}
       actions={
         <>
@@ -57,8 +64,15 @@ function GateOutCard({ pass, canLetOut, onOpen }) {
               {t('gateOutCancelPass')}
             </Button>
           )}
+          {canLetOut && !weighed && (
+            <p className="m-0 self-center text-xs font-semibold text-gp-warn-ink">{t('gateOutNeedsWeights')}</p>
+          )}
           {canLetOut && (
-            <Button onClick={() => onOpen(pass, SHEET_EXIT)} aria-label={t('gateOutLetOutFor', { vehicle: pass.vehicle_number })}>
+            <Button
+              onClick={() => onOpen(pass, SHEET_EXIT)}
+              disabled={!weighed}
+              aria-label={t('gateOutLetOutFor', { vehicle: pass.vehicle_number })}
+            >
               {t('gateOutLetOut')}
             </Button>
           )}
@@ -68,14 +82,16 @@ function GateOutCard({ pass, canLetOut, onOpen }) {
   )
 }
 
-function GateOutGroup({ titleId, title, hint, passes, canLetOut, refreshing, onOpen }) {
+function GateOutGroup({ titleId, title, hint, passes, canLetOut, refreshing, onOpen, resetKey }) {
+  const pagination = usePagination(passes, { resetKey })
   return (
     <section aria-labelledby={titleId} className="mb-6">
       <h2 id={titleId} className="mb-1 text-base font-bold text-slate-900">{title}</h2>
       {hint && <p className="mb-3 text-sm text-slate-600">{hint}</p>}
       <RecordCardList refreshing={refreshing} className="md:grid-cols-2 xl:grid-cols-3">
-        {passes.map((pass) => <GateOutCard key={pass.id} pass={pass} canLetOut={canLetOut} onOpen={onOpen} />)}
+        {pagination.pageItems.map((pass) => <GateOutCard key={pass.id} pass={pass} canLetOut={canLetOut} onOpen={onOpen} />)}
       </RecordCardList>
+      <Pagination pagination={pagination} label={title} />
     </section>
   )
 }
@@ -135,6 +151,7 @@ export default function GateOutTab() {
           title={t('gateOutReadyTitle')}
           hint={ready.length > 0 ? t('gateOutReadyHint') : t(query ? 'gateOutEmptySearch' : 'gateOutEmptyReady')}
           passes={ready}
+          resetKey={query}
           canLetOut
           refreshing={loading}
           onOpen={openSheet}
@@ -145,6 +162,7 @@ export default function GateOutTab() {
             title={t('gateOutAtGateTitle')}
             hint={t('gateOutAtGateHint')}
             passes={atGate}
+            resetKey={query}
             canLetOut={false}
             refreshing={loading}
             onOpen={openSheet}
