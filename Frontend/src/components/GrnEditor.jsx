@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useBreadcrumbDetail } from '../context/BreadcrumbContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { useGrnRecord } from '../hooks/useStoreWork'
@@ -188,6 +189,7 @@ export default function GrnEditor({ entryId, onBack }) {
   const record = useGrnRecord(entryId)
   const actions = useGrnActions(record)
   const { grn, pass } = record
+  useBreadcrumbDetail(entryId, pass?.vehicle_number)
 
   if (!grn && record.loading) return <p role="status">{t('loading')}</p>
   if (!grn) {

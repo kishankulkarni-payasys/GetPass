@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { OCR_DOC_TYPES, readDocument } from '../api/gateIn'
 import { useLanguage } from '../context/LanguageContext'
+import useObjectUrl from '../hooks/useObjectUrl'
 import { apiErrorDetail, translateApiDetail } from '../i18n/apiErrors'
+import TakePhotoButton, { CameraErrorNotice } from './TakePhotoButton'
 
 // Photo kinds stored with the pass, and the OCR document type each one reads.
 export const CAPTURE_TILES = [
@@ -11,20 +13,6 @@ export const CAPTURE_TILES = [
 ]
 
 const READ_STATUS = { idle: 'idle', reading: 'reading', read: 'read', failed: 'failed' }
-
-function usePreviewUrl(file) {
-  const [url, setUrl] = useState(null)
-  useEffect(() => {
-    if (!file) {
-      setUrl(null)
-      return undefined
-    }
-    const objectUrl = URL.createObjectURL(file)
-    setUrl(objectUrl)
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [file])
-  return url
-}
 
 function TileStatus({ status, confidence, errorDetail, ocrActive }) {
   const { t } = useLanguage()
@@ -45,6 +33,7 @@ function TileStatus({ status, confidence, errorDetail, ocrActive }) {
 
 function TileInputs({ tile, disabled, onFile }) {
   const { t } = useLanguage()
+  const [cameraError, setCameraError] = useState(null)
   const handleChange = (event) => {
     const [file] = event.target.files ?? []
     // Reset so taking the same photo again still fires onChange.
@@ -54,21 +43,19 @@ function TileInputs({ tile, disabled, onFile }) {
   const label = t(tile.labelKey)
   return (
     <div className="gate-tile-actions">
-      <label className={`gp-btn gp-btn-primary gp-btn-sm ${disabled ? 'gate-tile-input-disabled' : ''}`}>
-        {t('gateInTakePhoto')}
-        <input type="file" accept="image/*" capture="environment" className="visually-hidden" disabled={disabled} onChange={handleChange} aria-label={t('gateInTakePhotoOf', { document: label })} />
-      </label>
+      <TakePhotoButton kind={tile.kind} documentLabel={label} disabled={disabled} cameraError={cameraError} onCameraError={setCameraError} onFile={onFile} onInputChange={handleChange} />
       <label className={`gp-btn gp-btn-secondary gp-btn-sm ${disabled ? 'gate-tile-input-disabled' : ''}`}>
         {t('gateInChooseFile')}
         <input type="file" accept="image/jpeg,image/png,image/webp" className="visually-hidden" disabled={disabled} onChange={handleChange} aria-label={t('gateInChooseFileOf', { document: label })} />
       </label>
+      <CameraErrorNotice error={cameraError} />
     </div>
   )
 }
 
 function CaptureTile({ tile, file, ocrActive, disabled, onPhoto, onOcrResult }) {
   const { t } = useLanguage()
-  const previewUrl = usePreviewUrl(file)
+  const previewUrl = useObjectUrl(file)
   const [status, setStatus] = useState(READ_STATUS.idle)
   const [confidence, setConfidence] = useState(null)
   const [errorDetail, setErrorDetail] = useState(null)

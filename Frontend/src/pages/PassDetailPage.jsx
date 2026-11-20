@@ -9,6 +9,7 @@ import { formatQty } from '../components/GrnLines'
 import { formatWeight } from '../components/WeighIndicator'
 import WeighmentHistory from '../components/WeighmentHistory'
 import { useAuth } from '../context/AuthContext'
+import { useBreadcrumbDetail } from '../context/BreadcrumbContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useGateInQueue } from '../hooks/useGateInQueue'
 import { usePassDetail } from '../hooks/usePassDetail'
@@ -210,6 +211,8 @@ export default function PassDetailPage() {
   const { id } = useParams()
   const { pass, loading, failed, errorDetail, reload } = usePassDetail(id)
   const photosPending = usePhotosPending(id)
+  // The loaded pass's own id, so the crumb can never pair this URL with another pass.
+  useBreadcrumbDetail(pass?.id, pass?.vehicle_number)
 
   const heading = <PageHeading kicker={t('navGroupOperations')} title={t('navPassDetail')} />
   if (!pass && loading) return <div className="page-screen">{heading}<p role="status">{t('loading')}</p></div>

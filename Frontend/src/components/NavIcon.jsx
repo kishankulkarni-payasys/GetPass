@@ -12,6 +12,8 @@ const ICON_PATHS = {
   dashboard: 'M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-4H4v4Zm10-12h6V4h-6v4Z',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   signOut: 'M10 17l5-5-5-5m5 5H3m9-9h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6',
+  home: 'M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1v-8.5Z',
+  back: 'M15 5l-7 7 7 7',
 }
 
 const DEFAULT_STROKE_WIDTH = 1.8

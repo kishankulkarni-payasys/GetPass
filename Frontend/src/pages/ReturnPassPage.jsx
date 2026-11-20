@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getPassDetail, getPassGrn } from '../api/gateOut'
 import PageHeading from '../components/PageHeading'
 import Button from '../components/ui/Button'
 import ListState from '../components/ui/ListState'
 import PlateChip from '../components/ui/PlateChip'
+import { useBreadcrumbDetail } from '../context/BreadcrumbContext'
 import { useLanguage } from '../context/LanguageContext'
 import { apiErrorDetail, translateApiDetail } from '../i18n/apiErrors'
 import { passDetailPath } from '../navigation/navItems'
@@ -13,19 +14,26 @@ import './ReturnPassPage.css'
 
 const SKELETON_COUNT = 1
 
+const EMPTY_RETURN_PASS = { entryId: null, loading: true, errorDetail: undefined, detail: null, lines: [] }
+
 // Pass header + GRN lines. Only lines with a rejected quantity go on the out-pass.
+// The page is not remounted per id, so state is tagged with the id it belongs
+// to: a retry keeps the sheet on screen, but another pass starts from empty.
 function useReturnPass(entryId) {
-  const [state, setState] = useState({ loading: true, errorDetail: undefined, detail: null, lines: [] })
+  const [state, setState] = useState(EMPTY_RETURN_PASS)
+  const currentIdRef = useRef(entryId)
+  currentIdRef.current = entryId
 
   const load = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, errorDetail: undefined }))
+    const isCurrent = () => currentIdRef.current === entryId
+    setState((prev) => (prev.entryId === entryId ? { ...prev, loading: true, errorDetail: undefined } : { ...EMPTY_RETURN_PASS, entryId }))
     try {
       const detail = await getPassDetail(entryId)
       const grn = detail.grn?.return_pass_number ? await getPassGrn(entryId) : null
       const lines = (grn?.lines ?? []).filter((line) => Number(line.rejected_qty) > 0)
-      setState({ loading: false, errorDetail: undefined, detail, lines })
+      if (isCurrent()) setState({ entryId, loading: false, errorDetail: undefined, detail, lines })
     } catch (err) {
-      setState((prev) => ({ ...prev, loading: false, errorDetail: apiErrorDetail(err) }))
+      if (isCurrent()) setState((prev) => ({ ...prev, loading: false, errorDetail: apiErrorDetail(err) }))
     }
   }, [entryId])
 
@@ -33,7 +41,9 @@ function useReturnPass(entryId) {
     load()
   }, [load])
 
-  return { ...state, reload: load }
+  // Before the effect runs for a new id, the old pass must not render even for one frame.
+  const visibleState = state.entryId === entryId ? state : EMPTY_RETURN_PASS
+  return { ...visibleState, reload: load }
 }
 
 function Fact({ label, children, mono = false }) {
@@ -125,6 +135,8 @@ export default function ReturnPassPage() {
   const { t } = useLanguage()
   const { id } = useParams()
   const { loading, errorDetail, detail, lines, reload } = useReturnPass(id)
+  // The loaded pass's own id, so the crumb can never pair this URL with another pass.
+  useBreadcrumbDetail(detail?.id, detail?.vehicle_number)
   const hasReturnPass = Boolean(detail?.grn?.return_pass_number)
   const error = errorDetail !== undefined ? translateApiDetail(errorDetail, t, 'returnPassErrorLoad') : null
 

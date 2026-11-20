@@ -1,0 +1,20 @@
+type,id,parent_id,subject,role,priority,status,area
+Epic,EPIC-IN,,Inward vehicle gate pass flow,,,In progress,IN
+Epic,EPIC-ADM,,"Administration, access and usability",,,In progress,ADM
+User story,US-IN-01,EPIC-IN,"As a Security Guard, I want to create inward and other-vehicle passes with camera capture, OCR I confirm, PO checks and an offline queue, then let out only vehicles cleared to leave, so that every truck is logged and released correctly.",Security Guard,Must,Done,IN
+User story,US-IN-02,EPIC-IN,"As a Weighbridge Operator or Quality Inspector, I want stable-only weight capture with manual and re-capture history, and a quality queue with per-line results, so that weights and inspections are correct and traceable.",Weighbridge Operator or Quality Inspector,Must,Gap,IN
+Task,T-IN-01,US-IN-02,Remove the legacy PATCH /api/entries/{id}/weight route so weight can only be recorded through the weighment rules,,Must,To do,Backend
+User story,US-IN-03,EPIC-IN,"As a Store In-charge, I want GRNs only after quality, editable drafts, segregation of duty, ERP posting with retry and clear failure messages, so that material is received correctly and reaches the ERP once.",Store In-charge,Must,Gap,IN
+Task,T-IN-02,US-IN-03,"Add an erp_error_code next to erp_last_error on GRN responses (grn_posting.py, grn_views.py)",,Must,To do,Backend
+Task,T-IN-03,US-IN-03,Show a translated ERP failure message per erp_error_code with the raw text as detail in GrnPage.jsx and GrnEditor.jsx,,Must,To do,Frontend
+User story,US-ADM-01,EPIC-ADM,"As an Admin, I want role-based sign-in and full user management, including password reset, self-service password change, a failed-login limit and an audit of user changes, so that access is safe and reviewable.",Admin,Must,Gap,ADM
+Task,T-ADM-01,US-ADM-01,"Add POST /api/auth/change-password, a failed-login throttle on POST /api/auth/login, and user-admin audit rows in routers/users.py with a user_audit_log migration for review",,Must,To do,Backend
+Task,T-ADM-02,US-ADM-01,Add reset-password and edit-name actions on UsersPage.jsx and a change-password form on AccountPage.jsx,,Must,To do,Frontend
+User story,US-ADM-02,EPIC-ADM,"As a Site Supervisor, I want a live dashboard and a filterable Entry Log that loads in pages, so that I can follow the site and find any vehicle fast as history grows.",Site Supervisor,Must,Gap,ADM
+Task,T-ADM-03,US-ADM-02,"Add limit/offset and a total count to GET /api/entries, checking indexes on vehicle_entries",,Must,To do,Backend
+Task,T-ADM-04,US-ADM-02,"Add Load more to the Log cards and table (EntriesPage.jsx, EntryTable.jsx, useEntries.js)",,Must,To do,Frontend
+User story,US-ADM-03,EPIC-ADM,"As any user, I want mobile cards and tabs, breadcrumbs, an offline notice and every screen and error message in English, Hindi or Marathi, so that I can work on site in the language I read best.",any user,Must,Gap,ADM
+Task,T-ADM-05,US-ADM-03,Map the photo-upload and Internal server error messages in apiErrors.js with keys in strings/common.js,,Must,To do,Frontend
+Task,T-ADM-06,US-ADM-03,Build the GRN weighed-by notice and waiting-time line from single templates in GrnEditor.jsx and GrnPage.jsx,,Must,To do,Frontend
+Task,T-ADM-07,US-ADM-03,Add an app-wide offline banner and disable write actions outside Gate-in,,Must,To do,Frontend
+Task,T-QA-01,US-IN-02,Test all open tasks,,Must,To do,QA

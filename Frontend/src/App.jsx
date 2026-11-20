@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { BreadcrumbProvider } from './context/BreadcrumbContext'
 import { EntryLogFiltersProvider } from './context/EntryLogFiltersContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { ToastProvider } from './context/ToastContext'
@@ -92,7 +93,9 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <LanguageProvider>
-            <AppLayout />
+            <BreadcrumbProvider>
+              <AppLayout />
+            </BreadcrumbProvider>
           </LanguageProvider>
         </AuthProvider>
       </ToastProvider>
