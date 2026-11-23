@@ -60,8 +60,11 @@ def create_access_token(user_id: int, role: str) -> str:
 
 def get_current_user(
     access_token: Optional[str] = Cookie(default=None),
+    authorization: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
 ) -> User:
+    if authorization and authorization.lower().startswith("bearer "):
+        access_token = authorization.split(None, 1)[1].strip()
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:

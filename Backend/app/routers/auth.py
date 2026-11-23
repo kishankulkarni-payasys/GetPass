@@ -16,7 +16,7 @@ from app.schemas import LoginRequest, UserOut
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=UserOut)
+@router.post("/login")
 def login(credentials: LoginRequest, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == credentials.username.strip()).first()
     if not user or not user.is_active or not verify_password(credentials.password, user.password_hash):
@@ -31,7 +31,15 @@ def login(credentials: LoginRequest, response: Response, db: Session = Depends(g
         secure=COOKIE_SECURE,
         max_age=ACCESS_TOKEN_EXPIRE_HOURS * 3600,
     )
-    return user
+    return {
+        "id": user.id,
+        "username": user.username,
+        "full_name": user.full_name,
+        "role": user.role,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+        "access_token": token,
+    }
 
 
 @router.post("/logout")
