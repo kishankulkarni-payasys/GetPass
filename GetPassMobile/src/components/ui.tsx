@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 // Shared visual language for the GetPass mobile screens: matches the dark navy /
-// white-card look of HomeScreen and LoginScreen so new screens don't invent a new style.
+// white-card look of MoreScreen and LoginScreen so new screens don't invent a new style.
 export const colors = {
   background: '#f5f6fa',
   card: '#fff',

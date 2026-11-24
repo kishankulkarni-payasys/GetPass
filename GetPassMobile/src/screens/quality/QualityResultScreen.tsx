@@ -65,9 +65,14 @@ export default function QualityResultScreen({ route, navigation }: Props) {
     setLines(current => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   }
 
+  function isValidNonNegativeQty(value: string): boolean {
+    const parsed = Number(value.trim());
+    return value.trim().length > 0 && Number.isFinite(parsed) && parsed >= 0;
+  }
+
   const canSubmit =
     lines.length > 0 &&
-    lines.every(line => line.acceptedQty.trim().length > 0 && line.rejectedQty.trim().length > 0) &&
+    lines.every(line => isValidNonNegativeQty(line.acceptedQty) && isValidNonNegativeQty(line.rejectedQty)) &&
     !isSubmitting;
 
   async function handleSubmit() {

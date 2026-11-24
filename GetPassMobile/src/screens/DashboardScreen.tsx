@@ -1,14 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import type { MainTabScreenProps } from '../navigation/TabNavigator';
 import { getDashboardSummary } from '../api/dashboard';
 import { DashboardRow, DashboardSummary } from '../types/dashboard';
 import { Card, EmptyState, ErrorBanner, LoadingView, Pill, colors } from '../components/ui';
 import { extractErrorMessage } from '../utils/apiError';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+type Props = MainTabScreenProps<'DashboardTab'>;
 
 function Kpi({ label, value }: { label: string; value: string | number }) {
   return (

@@ -1,16 +1,22 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { listEntries } from '../../api/entries';
-import { VehicleEntryOut } from '../../types/entries';
+import { PassState, PassType, VehicleEntryOut } from '../../types/entries';
 import { EmptyState, ErrorBanner, Input, LoadingView, Pill, colors } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EntryList'>;
 
 const OPEN_STATES = ['GATE_IN', 'ON_SITE', 'QUALITY_PENDING', 'QUALITY_RESOLVED', 'GRN_DRAFT', 'GRN_APPROVED'] as const;
+const ALL_STATES: PassState[] = [...OPEN_STATES, 'GATE_OUT', 'CANCELLED'];
+const PASS_TYPE_OPTIONS: { value: PassType | ''; label: string }[] = [
+  { value: '', label: 'All types' },
+  { value: 'inward', label: 'Inward' },
+  { value: 'general', label: 'General' },
+];
 
 type PillTone = 'good' | 'warn' | 'crit' | 'info' | 'neutral';
 
@@ -24,6 +30,14 @@ const STATE_TONE: Record<string, PillTone> = {
   GATE_OUT: 'neutral',
   CANCELLED: 'neutral',
 };
+
+function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
 
 function EntryRow({ entry, onPress }: { entry: VehicleEntryOut; onPress: () => void }) {
   return (
@@ -43,6 +57,8 @@ export default function EntryListScreen({ route, navigation }: Props) {
   const mode = route.params?.mode ?? 'open';
   const [entries, setEntries] = useState<VehicleEntryOut[]>([]);
   const [search, setSearch] = useState('');
+  const [passTypeFilter, setPassTypeFilter] = useState<PassType | ''>('');
+  const [stateFilter, setStateFilter] = useState<PassState | ''>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -69,9 +85,15 @@ export default function EntryListScreen({ route, navigation }: Props) {
     }, [load]),
   );
 
-  const filtered = entries.filter(entry =>
-    search.trim().length === 0 || entry.vehicle_number.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const stateOptions = mode === 'open' ? OPEN_STATES : ALL_STATES;
+
+  const filtered = entries.filter(entry => {
+    const matchesSearch =
+      search.trim().length === 0 || entry.vehicle_number.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesPassType = passTypeFilter === '' || entry.pass_type === passTypeFilter;
+    const matchesState = stateFilter === '' || entry.pass_state === stateFilter;
+    return matchesSearch && matchesPassType && matchesState;
+  });
 
   if (isLoading) return <LoadingView />;
 
@@ -80,6 +102,25 @@ export default function EntryListScreen({ route, navigation }: Props) {
       <View style={styles.searchBar}>
         <Input value={search} onChangeText={setSearch} placeholder="Search by vehicle number" autoCapitalize="characters" />
       </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterRowContent}>
+        {PASS_TYPE_OPTIONS.map(option => (
+          <FilterChip
+            key={option.value || 'all-types'}
+            label={option.label}
+            active={passTypeFilter === option.value}
+            onPress={() => setPassTypeFilter(option.value)}
+          />
+        ))}
+      </ScrollView>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterRowContent}>
+        <FilterChip label="All states" active={stateFilter === ''} onPress={() => setStateFilter('')} />
+        {stateOptions.map(state => (
+          <FilterChip key={state} label={state.replace('_', ' ')} active={stateFilter === state} onPress={() => setStateFilter(state)} />
+        ))}
+      </ScrollView>
+
       {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
       <FlatList
         data={filtered}
@@ -98,6 +139,18 @@ export default function EntryListScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   searchBar: { paddingHorizontal: 16, paddingTop: 12 },
+  filterRow: { marginTop: 10 },
+  filterRowContent: { paddingHorizontal: 16, gap: 8 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#eee',
+    marginRight: 8,
+  },
+  chipActive: { backgroundColor: colors.primary },
+  chipText: { fontSize: 12, fontWeight: '600', color: colors.subtext, textTransform: 'capitalize' },
+  chipTextActive: { color: '#fff' },
   list: { paddingBottom: 24 },
   row: {
     backgroundColor: '#fff',

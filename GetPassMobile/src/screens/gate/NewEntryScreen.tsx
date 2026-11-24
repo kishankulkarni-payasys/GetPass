@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../navigation/RootNavigator';
+import type { MainTabScreenProps } from '../../navigation/TabNavigator';
 import { createEntry } from '../../api/entries';
 import { ChallanLineIn, PassType } from '../../types/entries';
 import { Button, Card, ErrorBanner, FieldLabel, Input, colors } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'NewEntry'>;
+type Props = MainTabScreenProps<'GateInTab'>;
 
 // Mirrors Frontend/src/components/EntryForm.jsx's pass-type switch (inward vs general),
 // and the fields on VehicleEntryCreate (Backend/app/schemas.py). OCR/PO-lookup/QR capture

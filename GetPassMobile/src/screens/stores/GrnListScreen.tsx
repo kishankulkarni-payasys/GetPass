@@ -1,14 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../navigation/RootNavigator';
+import type { MainTabScreenProps } from '../../navigation/TabNavigator';
 import { listStoreWork } from '../../api/grn';
 import { GrnWorkItem } from '../../types/grn';
 import { EmptyState, ErrorBanner, LoadingView, Pill, colors } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'GrnList'>;
+type Props = MainTabScreenProps<'StoresTab'>;
 
 const GROUP_LABELS: Record<string, string> = {
   send_for_inspection: 'Awaiting inspection',
@@ -48,6 +47,8 @@ export default function GrnListScreen({ navigation }: Props) {
   return (
     <View style={styles.screen}>
       <View style={styles.headerRow}>
+        {/* Pushed as a top-level stack screen (not a tab switch): store_incharge has the
+            Stores/GRN tab but not the Entry Log tab, so this link must keep working for them. */}
         <TouchableOpacity onPress={() => navigation.navigate('EntryList', { mode: 'all' })}>
           <Text style={styles.link}>Open entry log</Text>
         </TouchableOpacity>
