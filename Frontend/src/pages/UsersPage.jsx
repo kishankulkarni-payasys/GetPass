@@ -10,6 +10,7 @@ import Input from '../components/ui/Input'
 import ListState from '../components/ui/ListState'
 import Pagination from '../components/ui/Pagination'
 import { usePagination } from '../hooks/usePagination'
+import PageHeading from '../components/PageHeading'
 import RecordCard, { RecordCardList } from '../components/ui/RecordCard'
 import Select from '../components/ui/Select'
 import { apiErrorDetail, apiErrorMessage, translateApiDetail } from '../i18n/apiErrors'
@@ -204,13 +205,7 @@ export default function UsersPage() {
 
   return (
     <div className="page-screen page-users">
-      <div className="page-heading mb-5">
-        <div>
-          <p className="page-kicker">{t('headerSectionAdministration')}</p>
-          <h1 className="mb-1 text-2xl font-bold text-slate-900">{t('navUserManagement')}</h1>
-          <p className="page-description">{t('usersDescription')}</p>
-        </div>
-      </div>
+      <PageHeading kicker={t('headerSectionAdministration')} title={t('navUserManagement')} description={t('usersDescription')} />
 
       {/* Mobile only: the create form is collapsed behind this button (always shown on desktop). */}
       <div className="users-add-toggle d-lg-none mb-4">

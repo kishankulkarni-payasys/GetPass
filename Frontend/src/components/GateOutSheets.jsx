@@ -143,7 +143,7 @@ function ExitSheetBody({ pass, details, confirmed, onConfirmChange }) {
   }
   if (details.errorDetail !== null || (pass.pass_type === PASS_TYPES.inward && !details.detail)) {
     return (
-      <div role="alert" className="rounded-xl border border-gp-crit bg-gp-crit-wash p-3 text-sm text-gp-crit-ink">
+      <div role="alert" className="gp-banner gp-banner-crit">
         <p className="mb-2">{translateApiDetail(details.errorDetail, t, 'gateOutLoadDetailFailed')}</p>
         <Button variant="secondary" size="sm" onClick={details.reload}>{t('retry')}</Button>
       </div>

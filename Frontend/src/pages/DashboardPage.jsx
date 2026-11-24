@@ -248,7 +248,7 @@ export default function DashboardPage() {
       <PageHeading kicker={t('navGroupOverview')} title={t('tabDashboard')} description={t('sectionDashboardDescription')} />
       <DashboardToolbar day={day} onDayChange={setDay} onRefresh={refresh} loading={loading} updatedAt={updatedAt} />
       {summary && hasError && (
-        <p role="alert" className="mb-4 rounded-lg border border-gp-crit bg-gp-crit-wash p-3 text-sm text-gp-crit-ink">
+        <p role="alert" className="gp-banner gp-banner-crit mb-4">
           {t('dashboardRefreshFailed')}
         </p>
       )}

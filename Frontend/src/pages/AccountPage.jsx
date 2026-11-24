@@ -1,5 +1,6 @@
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import NavIcon from '../components/NavIcon'
+import PageHeading from '../components/PageHeading'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useSignOut } from '../hooks/useSignOut'
@@ -12,12 +13,7 @@ export default function AccountPage() {
 
   return (
     <div className="page-screen account-page">
-      <div className="page-heading mb-5">
-        <div>
-          <p className="page-kicker">{t('headerSectionProfile')}</p>
-          <h1 className="mb-1 text-2xl font-bold text-slate-900">{t('navAccount')}</h1>
-        </div>
-      </div>
+      <PageHeading kicker={t('headerSectionProfile')} title={t('navAccount')} />
 
       <section className="account-card" aria-labelledby="account-name">
         <div className="account-profile">

@@ -87,7 +87,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               required
             />
-            <button type="submit" className="btn btn-primary login-submit" disabled={submitting}>
+            <button type="submit" className="btn btn-primary login-submit" disabled={submitting} aria-busy={submitting}>
               {submitting ? t('signingIn') : t('signInSecurely')}
               {!submitting && <span aria-hidden="true">→</span>}
             </button>
