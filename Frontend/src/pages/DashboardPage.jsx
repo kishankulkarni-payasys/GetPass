@@ -6,6 +6,8 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
 import ListState from '../components/ui/ListState'
+import Pagination from '../components/ui/Pagination'
+import { usePagination } from '../hooks/usePagination'
 import PlateChip from '../components/ui/PlateChip'
 import RecordCard, { RecordCardList } from '../components/ui/RecordCard'
 import StatePill from '../components/ui/StatePill'
@@ -220,13 +222,15 @@ function DashboardToolbar({ day, onDayChange, onRefresh, loading, updatedAt }) {
 function DashboardBoard({ summary }) {
   const { t } = useLanguage()
   const { board, quality_sla_minutes: qualitySla, dwell_sla_minutes: dwellSla } = summary
+  const pagination = usePagination(board)
   return (
     <section aria-labelledby="dashboard-board-title">
       <h2 id="dashboard-board-title" className="mb-1 text-base font-bold text-slate-900">{t('dashboardBoardTitle')}</h2>
       <p className="mb-3 text-sm text-slate-600">{t('dashboardBoardHint', { minutes: dwellSla })}</p>
       <ListState isEmpty={board.length === 0} emptyMessage={t('dashboardEmpty')}>
-        <BoardCards rows={board} qualitySlaMinutes={qualitySla} />
-        <BoardTable rows={board} qualitySlaMinutes={qualitySla} />
+        <BoardCards rows={pagination.pageItems} qualitySlaMinutes={qualitySla} />
+        <BoardTable rows={pagination.pageItems} qualitySlaMinutes={qualitySla} />
+        <Pagination pagination={pagination} />
       </ListState>
     </section>
   )

@@ -17,7 +17,7 @@ from app.schemas import (
     VehicleEntryOut,
     WeighmentOut,
 )
-from app.weighing import KIND_GROSS, KIND_TARE, superseded_ids, to_kg
+from app.weighing import current_weights_kg, superseded_ids
 
 SECONDS_PER_MINUTE = 60
 AUDIT_TIMELINE_LIMIT = 100
@@ -37,6 +37,10 @@ def to_entry_out(entry: VehicleEntry, now: Optional[datetime] = None) -> Vehicle
     out.erp_status = _erp_status(entry)
     out.display_state = display_state(entry.pass_state, out.erp_status)
     out.dwell_minutes = dwell_minutes(entry, now)
+    out.current_gross_kg, out.current_tare_kg = current_weights_kg(entry)
+    if out.current_gross_kg is not None and out.current_tare_kg is not None:
+        # Informational only (B8): never drives GRN quantities.
+        out.net_kg = out.current_gross_kg - out.current_tare_kg
     return out
 
 
@@ -48,11 +52,6 @@ def _weighments_out(db: Session, entry: VehicleEntry) -> List[WeighmentOut]:
         item.is_superseded = row.id in superseded
         result.append(item)
     return result
-
-
-def _current_kg(weighments: List[WeighmentOut], kind: str) -> Optional[float]:
-    current = next((w for w in weighments if w.kind == kind and not w.is_superseded), None)
-    return to_kg(current.weight, current.unit) if current else None
 
 
 def _quality_out(entry: VehicleEntry) -> Optional[QualitySummary]:
@@ -97,16 +96,10 @@ def _audit_out(db: Session, entry_id: int) -> List[AuditOut]:
 
 def to_detail_out(db: Session, entry: VehicleEntry) -> PassDetailOut:
     base = to_entry_out(entry)
-    weighments = _weighments_out(db, entry)
-    gross_kg, tare_kg = _current_kg(weighments, KIND_GROSS), _current_kg(weighments, KIND_TARE)
     return PassDetailOut(
         **base.model_dump(),
         challan_lines=[ChallanLineOut.model_validate(line) for line in entry.challan_lines],
-        weighments=weighments,
-        current_gross_kg=gross_kg,
-        current_tare_kg=tare_kg,
-        # Informational only (B8): never drives GRN quantities.
-        net_kg=gross_kg - tare_kg if gross_kg is not None and tare_kg is not None else None,
+        weighments=_weighments_out(db, entry),
         quality=_quality_out(entry),
         grn=_grn_out(entry.goods_receipt),
         audit=_audit_out(db, entry.id),

@@ -120,6 +120,8 @@ class PhotoOut(BaseModel):
     file_path: str
     uploaded_at: UtcDatetime
     kind: str = "vehicle"
+    # Set on weighbridge photos: the gross (loaded) or tare (empty) weighing the photo shows.
+    weighment_id: Optional[int] = None
 
 
 class VehicleEntryOut(BaseModel):
@@ -158,6 +160,10 @@ class VehicleEntryOut(BaseModel):
     display_state: Optional[str] = None
     dwell_minutes: Optional[int] = None
     erp_status: Optional[str] = None
+    # Current (latest) weighings in kg: loaded vehicle, empty vehicle, and the material between them.
+    current_gross_kg: Optional[float] = None
+    current_tare_kg: Optional[float] = None
+    net_kg: Optional[float] = None
 
 
 class WeightUpdate(BaseModel):
@@ -261,9 +267,6 @@ class GrnSummary(BaseModel):
 class PassDetailOut(VehicleEntryOut):
     challan_lines: List[ChallanLineOut] = []
     weighments: List[WeighmentOut] = []
-    current_gross_kg: Optional[float] = None
-    current_tare_kg: Optional[float] = None
-    net_kg: Optional[float] = None
     quality: Optional[QualitySummary] = None
     grn: Optional[GrnSummary] = None
     audit: List[AuditOut] = []

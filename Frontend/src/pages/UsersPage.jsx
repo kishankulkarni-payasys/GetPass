@@ -8,6 +8,8 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
 import ListState from '../components/ui/ListState'
+import Pagination from '../components/ui/Pagination'
+import { usePagination } from '../hooks/usePagination'
 import RecordCard, { RecordCardList } from '../components/ui/RecordCard'
 import Select from '../components/ui/Select'
 import { apiErrorDetail, apiErrorMessage, translateApiDetail } from '../i18n/apiErrors'
@@ -104,6 +106,7 @@ export default function UsersPage() {
   // Mobile only: the create form starts collapsed so the user list is visible first.
   const [createOpen, setCreateOpen] = useState(false)
   const confirmTimerRef = useRef(null)
+  const pagination = usePagination(users)
 
   const refresh = async () => {
     setLoading(true)
@@ -253,8 +256,9 @@ export default function UsersPage() {
         emptyMessage={t('usersEmpty')}
         loadingLabel={t('usersLoading')}
       >
+        <div>
         <RecordCardList refreshing={loading} className="d-lg-none">
-          {users.map((u) => (
+          {pagination.pageItems.map((u) => (
             <UserCard
               key={u.id}
               user={u}
@@ -280,7 +284,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {pagination.pageItems.map((u) => (
                   <tr key={u.id}>
                     <td className="font-medium text-slate-900">{u.username}</td>
                     <td className="text-slate-600">{u.full_name}</td>
@@ -319,6 +323,8 @@ export default function UsersPage() {
               </tbody>
             </table>
           </Card>
+        </div>
+        <Pagination pagination={pagination} />
         </div>
       </ListState>
     </div>

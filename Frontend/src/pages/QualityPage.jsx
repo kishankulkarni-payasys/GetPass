@@ -3,6 +3,8 @@ import { getQualityQueue } from '../api/quality'
 import QualityResultForm from '../components/QualityResultForm'
 import Button from '../components/ui/Button'
 import ListState from '../components/ui/ListState'
+import Pagination from '../components/ui/Pagination'
+import { usePagination } from '../hooks/usePagination'
 import PlateChip from '../components/ui/PlateChip'
 import RecordCard, { RecordCardList } from '../components/ui/RecordCard'
 import StatePill, { QualityResultPill } from '../components/ui/StatePill'
@@ -73,13 +75,15 @@ function QueueCard({ pass, onOpen }) {
 }
 
 function QueueGroup({ titleId, title, hint, passes, refreshing, onOpen }) {
+  const pagination = usePagination(passes)
   return (
     <section aria-labelledby={titleId} className="mb-6">
       <h2 id={titleId} className="mb-1 text-base font-bold text-slate-900">{title}</h2>
       <p className="mb-3 text-sm text-slate-600">{hint}</p>
       <RecordCardList refreshing={refreshing} className="md:grid-cols-2 xl:grid-cols-3">
-        {passes.map((pass) => <QueueCard key={pass.id} pass={pass} onOpen={onOpen} />)}
+        {pagination.pageItems.map((pass) => <QueueCard key={pass.id} pass={pass} onOpen={onOpen} />)}
       </RecordCardList>
+      <Pagination pagination={pagination} label={title} />
     </section>
   )
 }

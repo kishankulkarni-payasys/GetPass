@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Set
+from typing import Optional, Set, Tuple
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -54,6 +54,16 @@ def to_kg(weight: Optional[float], unit: Optional[str]) -> Optional[float]:
     if weight is None:
         return None
     return float(weight) * KG_PER_TON if unit == UNIT_TON else float(weight)
+
+
+def current_weights_kg(entry: VehicleEntry) -> Tuple[Optional[float], Optional[float]]:
+    """(gross_kg, tare_kg) from the pass's newest weighment of each kind; None when not weighed."""
+    latest = {}
+    # entry.weighments is newest first, matching current_weighment's order.
+    for row in entry.weighments:
+        latest.setdefault(row.kind, row)
+    gross, tare = latest.get(KIND_GROSS), latest.get(KIND_TARE)
+    return (to_kg(gross.weight, gross.unit) if gross else None, to_kg(tare.weight, tare.unit) if tare else None)
 
 
 def current_weighment(db: Session, entry_id: int, kind: str) -> Optional[PassWeighment]:

@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext'
 import { useIndicatorReading } from '../hooks/useIndicatorReading'
 import { usePassDetail } from '../hooks/usePassDetail'
 import { apiErrorMessage, translateApiDetail } from '../i18n/apiErrors'
-import { WEIGHMENT_KINDS } from '../utils/weighRules'
+import { WEIGHMENT_KINDS, WEIGH_FRAME_KIND, groupWeighPhotos } from '../utils/weighRules'
 import Button from './ui/Button'
 import PlateChip from './ui/PlateChip'
 import StatePill from './ui/StatePill'
@@ -16,7 +16,6 @@ import WeighmentHistory from './WeighmentHistory'
 const PhotoCapture = lazy(() => import('./PhotoCapture'))
 
 const UPLOAD_BUSY_KEY = 'weighbridgeToastUploadBusy'
-const WEIGH_FRAME_KIND = 'weigh_frame'
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -82,9 +81,9 @@ function useDialogFocus(dialogRef, initialFocusRef) {
 function WeightSummary({ pass }) {
   const { t } = useLanguage()
   const items = [
-    { key: WEIGHMENT_KINDS.gross, labelKey: 'weighKindGross', value: pass.current_gross_kg },
-    { key: WEIGHMENT_KINDS.tare, labelKey: 'weighKindTare', value: pass.current_tare_kg },
-    { key: 'net', labelKey: 'weighNet', value: pass.net_kg },
+    { key: WEIGHMENT_KINDS.gross, labelKey: 'weighLoadedGross', value: pass.current_gross_kg },
+    { key: WEIGHMENT_KINDS.tare, labelKey: 'weighEmptyTare', value: pass.current_tare_kg },
+    { key: 'net', labelKey: 'weighNetMaterial', value: pass.net_kg },
   ]
   return (
     <dl className="weigh-summary">
@@ -119,19 +118,62 @@ function PhotoButtons({ disabled, uploading, onFiles, onCamera }) {
   )
 }
 
-// Weigh-frame photos: uploaded with kind weigh_frame and linked to the newest weighment.
+const PHOTO_GROUPS = [
+  { kind: WEIGHMENT_KINDS.gross, titleKey: 'weighGrossPhotos', copyKey: 'weighGrossPhotosCopy' },
+  { kind: WEIGHMENT_KINDS.tare, titleKey: 'weighTarePhotos', copyKey: 'weighTarePhotosCopy' },
+]
+
+function PhotoGrid({ photos }) {
+  const { t } = useLanguage()
+  if (photos.length === 0) {
+    return <div className="weighbridge-empty-photos rounded-3 p-4 text-center text-sm">{t('weighbridgeNoPhotos')}</div>
+  }
+  return (
+    <div className="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-2">
+      {photos.map((photo) => (
+        <div className="col" key={photo.id}>
+          <img src={`/uploads/${photo.file_path}`} alt={t('weighFramePhotoAlt')} className="img-fluid w-100 rounded-3 border weighbridge-photo" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function WeighFramePhotos({ pass, onUploaded }) {
+  const groups = groupWeighPhotos(pass)
+  return (
+    <>
+      {PHOTO_GROUPS.map((group) => (
+        <WeighingPhotos key={group.kind} pass={pass} group={group} photos={groups[group.kind]} onUploaded={onUploaded} />
+      ))}
+      {groups.other.length > 0 && <OtherWeighPhotos photos={groups.other} />}
+    </>
+  )
+}
+
+function OtherWeighPhotos({ photos }) {
+  const { t } = useLanguage()
+  return (
+    <section aria-labelledby="weigh-photos-other-title" className="mt-4">
+      <h3 id="weigh-photos-other-title" className="mb-3 text-base font-bold">{t('weighOtherPhotos')}</h3>
+      <PhotoGrid photos={photos} />
+    </section>
+  )
+}
+
+// Photos for one weighing (loaded or empty), uploaded as weigh_frame and linked to that weighment.
+function WeighingPhotos({ pass, group, photos, onUploaded }) {
   const { t } = useLanguage()
   const { showToast } = useToast()
   const [uploading, setUploading] = useState(false)
   const [capturing, setCapturing] = useState(false)
   // A ref, not state, so two uploads started in the same tick still see the lock.
   const uploadingRef = useRef(false)
-  const photos = (pass.photos ?? []).filter((photo) => photo.kind === WEIGH_FRAME_KIND)
-  const latestWeighment = (pass.weighments ?? []).find((row) => !row.is_superseded)
+  const weighment = (pass.weighments ?? []).find((row) => row.kind === group.kind && !row.is_superseded)
+  const titleId = `weigh-photos-${group.kind}-title`
 
   const handleUpload = async (files) => {
-    if (files.length === 0) return
+    if (files.length === 0 || !weighment) return
     if (uploadingRef.current) {
       showToast(t(UPLOAD_BUSY_KEY), 'error')
       return
@@ -139,7 +181,7 @@ function WeighFramePhotos({ pass, onUploaded }) {
     uploadingRef.current = true
     setUploading(true)
     try {
-      await uploadPhotos(pass.id, files, { kind: WEIGH_FRAME_KIND, weighmentId: latestWeighment?.id })
+      await uploadPhotos(pass.id, files, { kind: WEIGH_FRAME_KIND, weighmentId: weighment.id })
       showToast(t('weighbridgeToastPhotoUploaded'), 'success')
       onUploaded()
     } catch (err) {
@@ -152,34 +194,26 @@ function WeighFramePhotos({ pass, onUploaded }) {
 
   const handleCaptured = (blob) => {
     setCapturing(false)
-    handleUpload([new File([blob], 'weigh-frame.jpg', { type: 'image/jpeg' })])
+    handleUpload([new File([blob], `weigh-${group.kind}.jpg`, { type: 'image/jpeg' })])
   }
 
   return (
-    <section aria-labelledby="weigh-photos-title" className="mt-4">
+    <section aria-labelledby={titleId} className="mt-4">
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 id="weigh-photos-title" className="m-0 text-base font-bold">{t('weighFramePhotos')}</h3>
-          <p className="m-0 text-sm">{t('weighFramePhotosCopy')}</p>
+          <h3 id={titleId} className="m-0 text-base font-bold">{t(group.titleKey)}</h3>
+          <p className="m-0 text-sm">{weighment ? t(group.copyKey) : t('weighPhotosNeedWeight')}</p>
         </div>
-        <PhotoButtons disabled={uploading || capturing} uploading={uploading} onFiles={handleUpload} onCamera={() => setCapturing(true)} />
+        {weighment && (
+          <PhotoButtons disabled={uploading || capturing} uploading={uploading} onFiles={handleUpload} onCamera={() => setCapturing(true)} />
+        )}
       </div>
       {capturing && (
         <Suspense fallback={<p className="text-sm">{t('weighbridgeLoadingCamera')}</p>}>
           <PhotoCapture onCapture={handleCaptured} onClose={() => setCapturing(false)} />
         </Suspense>
       )}
-      {photos.length === 0 ? (
-        <div className="weighbridge-empty-photos rounded-3 p-4 text-center text-sm">{t('weighbridgeNoPhotos')}</div>
-      ) : (
-        <div className="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-2">
-          {photos.map((photo) => (
-            <div className="col" key={photo.id}>
-              <img src={`/uploads/${photo.file_path}`} alt={t('weighFramePhotoAlt')} className="img-fluid w-100 rounded-3 border weighbridge-photo" />
-            </div>
-          ))}
-        </div>
-      )}
+      <PhotoGrid photos={photos} />
     </section>
   )
 }
