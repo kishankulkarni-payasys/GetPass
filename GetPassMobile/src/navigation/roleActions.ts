@@ -9,16 +9,18 @@ import { UserRole } from '../types/auth';
 export interface RoleAction {
   key: string;
   label: string;
+  // Screen in RootNavigator's authed stack this card opens.
+  screen: string;
 }
 
 const ALL_ACTIONS: Record<string, RoleAction> = {
-  gateIn: { key: 'gateIn', label: 'Gate In' },
-  gateOut: { key: 'gateOut', label: 'Gate Out' },
-  weighbridge: { key: 'weighbridge', label: 'Weighbridge' },
-  quality: { key: 'quality', label: 'Quality' },
-  stores: { key: 'stores', label: 'Stores / GRN' },
-  dashboard: { key: 'dashboard', label: 'Dashboard' },
-  users: { key: 'users', label: 'Users' },
+  gateIn: { key: 'gateIn', label: 'Gate In', screen: 'NewEntry' },
+  gateOut: { key: 'gateOut', label: 'Gate Out', screen: 'EntryList' },
+  weighbridge: { key: 'weighbridge', label: 'Weighbridge', screen: 'Weighbridge' },
+  quality: { key: 'quality', label: 'Quality', screen: 'QualityQueue' },
+  stores: { key: 'stores', label: 'Stores / GRN', screen: 'GrnList' },
+  dashboard: { key: 'dashboard', label: 'Dashboard', screen: 'Dashboard' },
+  users: { key: 'users', label: 'Users', screen: 'Users' },
 };
 
 const ACTIONS_BY_ROLE: Record<UserRole, RoleAction[]> = {
