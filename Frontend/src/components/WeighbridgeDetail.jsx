@@ -263,9 +263,15 @@ export default function WeighbridgeDetail({ entry, onClose }) {
   // The list row until the full record arrives, then the live state after each capture.
   const current = detail.pass ?? entry
 
+  // Closes on a click outside the modal content (design-system brief), the
+  // same backdrop-click guard used by PassActionDialog.
+  const closeOnBackdropClick = (event) => {
+    if (event.target === event.currentTarget) onClose()
+  }
+
   return (
     <>
-      <div className="modal-backdrop show weighbridge-backdrop" />
+      <div className="modal-backdrop show weighbridge-backdrop" onClick={onClose} />
       <div
         ref={dialogRef}
         className="modal d-block weighbridge-modal"
@@ -273,6 +279,7 @@ export default function WeighbridgeDetail({ entry, onClose }) {
         aria-modal="true"
         aria-labelledby="weighbridge-modal-title"
         onKeyDown={handleDialogKeyDown}
+        onClick={closeOnBackdropClick}
       >
         {/* Below lg it is a full-screen sheet that also covers the bottom tab bar. */}
         <div className="modal-dialog modal-fullscreen-lg-down modal-dialog-centered modal-dialog-scrollable modal-xl">

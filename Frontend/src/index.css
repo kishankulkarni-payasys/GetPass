@@ -57,6 +57,16 @@
   --gp-radius-lg: 16px;
   --gp-shadow: 0 1px 2px rgb(19 26 34 / 6%), 0 6px 20px rgb(19 26 34 / 6%);
 
+  /* ---------- Neumorphism: interactive controls only ----------
+     Cards/forms/modals stay flat (border-based elevation, see the Card,
+     Input and Modal rules below); buttons, segmented controls and other
+     "pressable" elements get a soft, tactile dual-tone shadow instead, built
+     from the existing ink/surface tones so no new hex is introduced. Subtle
+     on purpose: a hover lift, not a glow. */
+  --gp-neu-raised: -3px -3px 7px rgb(255 255 255 / 65%), 3px 4px 9px rgb(19 26 34 / 16%);
+  --gp-neu-raised-sm: -2px -2px 4px rgb(255 255 255 / 60%), 2px 2px 5px rgb(19 26 34 / 14%);
+  --gp-neu-pressed: inset 2px 2px 5px rgb(19 26 34 / 18%), inset -2px -2px 5px rgb(255 255 255 / 45%);
+
   /* Older names, re-pointed so existing screens follow the new palette. */
   --app-ink: var(--gp-ink);
   --app-muted: var(--gp-muted);
@@ -441,15 +451,22 @@ select {
   letter-spacing: -0.035em;
 }
 
+/* Cards: border-based elevation only, no drop shadow (design-system brief). */
 .app-content .rounded-xl.border,
 .app-content .card {
   border-color: var(--app-border);
-  box-shadow: 0 0.3rem 1.25rem rgb(19 26 34 / 6%);
 }
 
 .app-content input:not([type="checkbox"]):not([type="file"]),
 .app-content select {
   min-height: 2.65rem;
+}
+
+/* Generous internal padding (12-16px) on Bootstrap-driven fields too, so the
+   gate-out/quality/login forms match the ui/Input and ui/Select padding. */
+.form-control,
+.form-select {
+  padding: 0.75rem 1rem;
 }
 
 .app-content input:focus,
@@ -604,7 +621,6 @@ select {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: 0.85rem;
-  box-shadow: 0 0.25rem 1rem rgb(19 26 34 / 5%);
   min-width: 0;
   padding: 1rem;
 }
@@ -909,7 +925,6 @@ select {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: 0.85rem;
-  box-shadow: 0 0.25rem 1rem rgb(19 26 34 / 5%);
   padding: 1.15rem;
 }
 
@@ -1273,11 +1288,11 @@ select {
   width: 1.4rem;
 }
 
+/* Card: border-based elevation against the dark hero, no drop shadow. */
 .login-card {
   background: var(--gp-surface);
-  border: 1px solid rgb(255 255 255 / 75%);
+  border: 1px solid var(--gp-line);
   border-radius: 1.15rem;
-  box-shadow: 0 1.5rem 4rem rgb(14 22 32 / 28%);
   color: var(--gp-ink);
   padding: clamp(1.5rem, 4vw, 2.15rem);
 }
@@ -1846,10 +1861,34 @@ select {
 }
 
 /* Admins have eight sections: the list scrolls on short desktop screens
-   instead of pushing the sign-out button off the screen. */
+   instead of pushing the sign-out button off the screen. Firefox gets a
+   slim bar via scrollbar-width; Chrome/Edge via the ::-webkit- rules below
+   (both replace the native arrow-button scrollbar). Keyboard scrolling and
+   focus order are unaffected - this is paint only, not an overflow change. */
 .app-sidebar {
   max-height: 100vh;
   overflow-y: auto;
+  scrollbar-color: rgb(255 255 255 / 25%) transparent;
+  scrollbar-width: thin;
+}
+
+.app-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-sidebar::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 25%);
+  border-radius: 999px;
+}
+
+.app-sidebar::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
 }
 
 /* On the dark sidebar the light focus colour is the visible one. */
@@ -1859,6 +1898,15 @@ select {
 .app-brand:focus-visible {
   outline: 3px solid var(--gp-focus);
   outline-offset: 2px;
+}
+
+/* ---------- Modals (design-system brief: rounded corners, 60% overlay) ----------
+   Bootstrap's own backdrop defaults to 50% black; every dialog in the app
+   (PassActionDialog, CameraCaptureDialog, WeighbridgeDetail, GateOutSheets,
+   QualityResultForm) shares this one override instead of repeating it. */
+.modal-backdrop {
+  --bs-backdrop-bg: var(--gp-control);
+  --bs-backdrop-opacity: 0.6;
 }
 
 /* ---------- Mono numbers (weights, quantities, dwell, pass / PO / challan no.) ---------- */
@@ -2011,7 +2059,23 @@ select {
   justify-content: center;
   line-height: 1.25;
   text-decoration: none;
-  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+/* Soft, tactile lift on hover (not a glow) and a gentle "pressed in" shadow
+   while held down. Skipped for disabled buttons and under reduced motion. */
+.gp-btn:hover:not(:disabled) {
+  box-shadow: var(--gp-neu-raised);
+}
+
+.gp-btn:active:not(:disabled) {
+  box-shadow: var(--gp-neu-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-btn {
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
 }
 
 .gp-btn:focus-visible {
@@ -2100,8 +2164,9 @@ select {
   font: inherit;
 }
 
+/* Overlay: 60% dark, matching the shared .modal-backdrop rule above. */
 .more-sheet-backdrop {
-  background: rgb(14 22 32 / 45%);
+  background: rgb(14 22 32 / 60%);
   inset: 0;
   position: fixed;
   z-index: 1040;
@@ -2326,11 +2391,17 @@ select {
   font-weight: 600;
   min-height: 2.5rem;
   padding: 0.35rem 1rem;
+  transition: background-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
 }
 
+.gp-segment:hover:not(.gp-segment-active) {
+  box-shadow: var(--gp-neu-raised-sm);
+}
+
+/* Toggle-like control: the selected segment sits in a soft pressed well. */
 .gp-segment-active {
   background: var(--gp-surface);
-  box-shadow: 0 1px 2px rgb(19 26 34 / 14%);
+  box-shadow: var(--gp-neu-pressed);
   color: var(--gp-accent-ink);
   font-weight: 700;
 }

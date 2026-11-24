@@ -59,10 +59,24 @@ export default function PassActionDialog({ id, eyebrow, title, onClose, footer, 
   useModalBehaviour(dialogRef, closeButtonRef, onClose)
   const titleId = `${id}-title`
 
+  // Closes only when the click starts and ends on the dialog's own backdrop
+  // area, never when it lands inside the modal content (design-system brief:
+  // "close on a click outside").
+  const closeOnBackdropClick = (event) => {
+    if (event.target === event.currentTarget) onClose()
+  }
+
   return (
     <>
-      <div className="modal-backdrop show" />
-      <div ref={dialogRef} className="modal d-block" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className="modal-backdrop show" onClick={onClose} />
+      <div
+        ref={dialogRef}
+        className="modal d-block"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={closeOnBackdropClick}
+      >
         <div className="modal-dialog modal-fullscreen-sm-down modal-dialog-centered modal-dialog-scrollable modal-lg">
           <div className="modal-content overflow-hidden border-0 shadow-lg sm:rounded-2xl">
             <div className="modal-header border-0 bg-gp-control px-4 py-3">

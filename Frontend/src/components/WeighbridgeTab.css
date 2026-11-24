@@ -8,10 +8,10 @@
   color: var(--weighbridge-ink);
 }
 
+/* Card: border-based elevation, no drop shadow (design-system brief). */
 .weighbridge-table-card {
   border: 1px solid var(--weighbridge-border);
   border-radius: 1rem;
-  box-shadow: 0 0.25rem 1rem rgb(19 26 34 / 6%);
 }
 
 /* Keep the table on screen while a refresh runs, dimmed like the mobile cards. */
@@ -50,9 +50,8 @@
   border: 1px dashed var(--gp-line);
 }
 
-.weighbridge-backdrop {
-  background-color: rgb(14 22 32 / 62%);
-}
+/* Overlay now comes from the shared .modal-backdrop rule in index.css
+   (60% dark, same tone). No override needed here any more. */
 
 .weighbridge-modal {
   padding: 0.5rem;

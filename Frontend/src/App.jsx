@@ -75,7 +75,7 @@ function AppLayout() {
       <main className="app-main min-w-0 flex-1">
         <AppHeader />
         <MobileTopBar />
-        <div className="app-content mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="app-content max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           <EntryLogFiltersProvider>
             <AppRoutes />
           </EntryLogFiltersProvider>
