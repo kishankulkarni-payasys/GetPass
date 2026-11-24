@@ -57,6 +57,123 @@ React Native CLI project talking to the same FastAPI backend via Bearer-token au
 - `utils/formatPlate.ts`, `utils/apiError.ts` — plate formatting, API error normalization
 - App icon regenerated for all Android mipmap densities and iOS AppIcon sizes
 
+## Run the Android app on Windows
+
+These steps use the connected Android phone and USB port forwarding. Keep the backend on port `8000` and Metro on port `8082`.
+
+### Prerequisites
+
+- Install Android Studio with the Android SDK and Platform Tools, and install JDK 17.
+- Install Node.js `22.11` or newer (the mobile package's minimum).
+- For first-time backend setup, install Python, SQL Server, and the ODBC Driver 17 for SQL Server.
+- On a physical phone, enable **Developer options** and **USB debugging**, connect by USB, unlock the phone, and accept the USB debugging prompt.
+
+### 1. Configure and start the backend
+
+Open PowerShell in `Backend/`. On first setup, create the Python environment, install dependencies, and create `.env`:
+
+```powershell
+Set-Location 'C:\Users\Kishan Kulkarni\Desktop\GetPass\Backend'
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+notepad .env
+```
+
+In `.env`, set a random `SECRET_KEY` (at least 32 characters). Generate one with:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Also configure `DB_SERVER` / `DB_NAME` for your SQL Server. If the database has no users yet, set a private `DEFAULT_ADMIN_PASSWORD` (at least 8 characters; do not use the old placeholder). Do not commit `.env`.
+Ensure the SQL Server instance is running and the database exists; the backend creates tables but does not create the database itself.
+
+For later runs, just activate the existing environment. Start the server in this PowerShell window:
+
+```powershell
+Set-Location 'C:\Users\Kishan Kulkarni\Desktop\GetPass\Backend'
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+If PowerShell blocks the activation script, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` in that window, then activate the environment again.
+
+Leave this window open. Check the API from another PowerShell window:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/health
+```
+
+It should return `status : ok`.
+
+### 2. Connect the phone and forward the ports
+
+In a second PowerShell window:
+
+```powershell
+adb devices -l
+adb reverse tcp:8082 tcp:8082
+adb reverse tcp:8000 tcp:8000
+adb reverse --list
+```
+
+The device status should be `device`, not `unauthorized`. The reverse list should include `8082` and `8000`. If the phone asks to authorize this computer, accept the prompt and run the commands again.
+
+### 3. Start Metro
+
+In a third PowerShell window:
+
+```powershell
+Set-Location 'C:\Users\Kishan Kulkarni\Desktop\GetPass\GetPassMobile'
+npm ci
+npm start -- --port 8082
+```
+
+Run `npm ci` on first setup (or after dependencies change). Leave Metro running. If Metro is already running on port `8082`, reuse it instead of starting another copy.
+
+### 4. Build, install, and open the app
+
+In a fourth PowerShell window:
+
+```powershell
+Set-Location 'C:\Users\Kishan Kulkarni\Desktop\GetPass\GetPassMobile'
+npm run android -- --no-packager --port 8082
+```
+
+This builds the Android app, installs it on the connected device, and opens it. The `--no-packager` option uses the Metro server from Step 3 and avoids the prompt to choose a different port.
+
+To confirm the app is open:
+
+```powershell
+adb shell dumpsys activity activities | Select-String 'ResumedActivity'
+```
+
+The result should contain `com.getpassmobile/.MainActivity`. Saved JavaScript changes refresh through Metro; use the Android Dev Menu's **Reload** option to reload manually.
+
+### Emulator or Wi-Fi-only phone
+
+- **Android emulator:** start an emulator in Android Studio. USB `adb reverse` commands are not needed; the Android API host is derived from the Metro URL, with `10.0.2.2` used for the emulator.
+- **Phone over Wi-Fi:** keep the backend bound to `0.0.0.0`, connect the phone and computer to the same network, and set the mobile app's **More → Settings → API server address** to `http://<computer-LAN-IP>:8000`. Find the computer address with `ipconfig` and allow the backend/Metro through Windows Firewall if prompted.
+- If you choose a Metro port other than `8082`, use that same port for `npm start`, `adb reverse`, and `npm run android`.
+
+### Build a debug APK without launching the app
+
+```powershell
+Set-Location 'C:\Users\Kishan Kulkarni\Desktop\GetPass\GetPassMobile'
+.\android\gradlew.bat assembleDebug
+```
+
+The APK is written to `android\app\build\outputs\apk\debug\app-debug.apk`. Install and open it with:
+
+```powershell
+adb install -r .\android\app\build\outputs\apk\debug\app-debug.apk
+adb shell am start -n com.getpassmobile/.MainActivity
+```
+
+To stop development servers, press **Ctrl+C** in the backend and Metro windows.
+
 **Known gaps / open items:**
 - Mobile's Weighbridge screen is a simpler placeholder vs. the web Weighbridge tab — no Supplier field, no On-site/All-entries tabs, and no pagination/load-more yet. Flagged for Shikamaru to spec if parity with web is wanted (not a bug fix, a feature gap).
 - No dark mode on the web app yet (tracked as a feature request, not a defect).
