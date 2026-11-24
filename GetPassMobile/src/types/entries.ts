@@ -54,6 +54,19 @@ export interface PhotoOut {
   weighment_id?: number | null;
 }
 
+export interface AuditOut {
+  id: number;
+  action: string;
+  field?: string | null;
+  old_value?: string | null;
+  new_value?: string | null;
+  is_manual_override: boolean;
+  actor_user_id?: number | null;
+  actor_name?: string | null;
+  actor_service?: string | null;
+  created_at: string;
+}
+
 export interface VehicleEntryOut {
   id: number;
   vehicle_number: string;
@@ -96,8 +109,10 @@ export interface WeighmentOut {
   weight: number;
   unit: string;
   source: WeighmentSource;
+  indicator_frame_ref?: string | null;
   stable?: boolean | null;
   manual_reason?: string | null;
+  supersedes_id?: number | null;
   captured_by_id?: number | null;
   captured_at: string;
   is_superseded: boolean;
@@ -131,6 +146,7 @@ export interface GrnSummary {
 export interface PassDetailOut extends VehicleEntryOut {
   challan_lines: ChallanLineOut[];
   weighments: WeighmentOut[];
+  audit: AuditOut[];
   quality?: QualitySummary | null;
   grn?: GrnSummary | null;
 }

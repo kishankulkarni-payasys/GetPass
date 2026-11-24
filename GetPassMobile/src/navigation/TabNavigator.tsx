@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { createBottomTabNavigator, BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps } from '@react-navigation/native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthContext';
 import { getActionsForRole } from './roleActions';
-import { RootStackParamList } from './RootNavigator';
+import type { RootStackParamList } from './RootNavigator';
 import DashboardScreen from '../screens/DashboardScreen';
 import NewEntryScreen from '../screens/gate/NewEntryScreen';
 import EntryListScreen from '../screens/gate/EntryListScreen';
 import GrnListScreen from '../screens/stores/GrnListScreen';
-import MoreScreen from '../screens/MoreScreen';
+import MoreScreen, { MoreSectionsSheet } from '../screens/MoreScreen';
 import { colors } from '../components/ui';
 import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
 import { TabBarIcon, TabBarIconName } from '../components/icons/TabBarIcon';
@@ -32,6 +32,7 @@ export type MainTabScreenProps<T extends keyof MainTabParamList> = CompositeScre
 >;
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+type Props = NativeStackScreenProps<RootStackParamList, 'Main'>;
 
 const HEADER_OPTIONS = {
   headerStyle: { backgroundColor: '#fff' },
@@ -63,7 +64,9 @@ function EntryLogTabScreen(props: MainTabScreenProps<'EntryLogTab'>) {
   return <EntryListScreen {...(props as unknown as NativeStackScreenProps<RootStackParamList, 'EntryList'>)} />;
 }
 
-export default function TabNavigator() {
+export default function TabNavigator({ navigation }: Props) {
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [activeMoreKey, setActiveMoreKey] = useState<string | null>(null);
   const { user } = useAuth();
   const actions = user ? getActionsForRole(user.role) : [];
   const hasAction = (key: string) => actions.some(action => action.key === key);
@@ -72,35 +75,80 @@ export default function TabNavigator() {
   const showGateIn = hasAction('gateIn');
   const showEntryLog = hasAction('gateOut');
   const showStores = hasAction('stores');
+  const hasPrimaryTabs = showDashboard || showGateIn || showEntryLog || showStores;
+
+  function selectMoreItem(key: string) {
+    setActiveMoreKey(key);
+    setIsMoreOpen(false);
+    switch (key) {
+      case 'gateOut':
+        navigation.navigate('EntryList', { mode: 'open' });
+        break;
+      case 'weighbridge':
+        navigation.navigate('Weighbridge');
+        break;
+      case 'quality':
+        navigation.navigate('QualityQueue');
+        break;
+      case 'users':
+        navigation.navigate('Users');
+        break;
+      case 'account':
+        navigation.navigate('Account');
+        break;
+      case 'settings':
+        navigation.navigate('Settings');
+        break;
+    }
+  }
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: true,
-        ...HEADER_OPTIONS,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.muted,
-      }}
-    >
-      {showDashboard ? (
-        <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ title: 'Dashboard', ...tabOptions('Dashboard', 'dashboard') }} />
-      ) : null}
-      {showGateIn ? (
-        <Tab.Screen name="GateInTab" component={NewEntryScreen} options={{ title: 'Gate-in', ...tabOptions('Gate In', 'meeting_room') }} />
-      ) : null}
-      {showEntryLog ? (
+    <>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: true,
+          ...HEADER_OPTIONS,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.muted,
+        }}
+      >
+        {showDashboard ? (
+          <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ title: 'Dashboard', ...tabOptions('Dashboard', 'dashboard') }} />
+        ) : null}
+        {showGateIn ? (
+          <Tab.Screen name="GateInTab" component={NewEntryScreen} options={{ title: 'Gate-in', ...tabOptions('Gate In', 'meeting_room') }} />
+        ) : null}
+        {showEntryLog ? (
+          <Tab.Screen
+            name="EntryLogTab"
+            component={EntryLogTabScreen}
+            initialParams={{ mode: 'all' }}
+            options={{ title: 'Entry Log', ...tabOptions('Entry Log', 'receipt_long') }}
+          />
+        ) : null}
+        {showStores ? (
+          <Tab.Screen name="StoresTab" component={GrnListScreen} options={{ title: 'Stores / GRN', ...tabOptions('Stores/GRN', 'inventory_2') }} />
+        ) : null}
         <Tab.Screen
-          name="EntryLogTab"
-          component={EntryLogTabScreen}
-          initialParams={{ mode: 'all' }}
-          options={{ title: 'Entry Log', ...tabOptions('Entry Log', 'receipt_long') }}
+          name="MoreTab"
+          component={MoreScreen}
+          options={{ title: 'More', ...tabOptions('More', 'more_horiz') }}
+          listeners={{
+            tabPress: event => {
+              if (!hasPrimaryTabs) return;
+              event.preventDefault();
+              setIsMoreOpen(true);
+            },
+          }}
         />
-      ) : null}
-      {showStores ? (
-        <Tab.Screen name="StoresTab" component={GrnListScreen} options={{ title: 'Stores / GRN', ...tabOptions('Stores/GRN', 'inventory_2') }} />
-      ) : null}
-      <Tab.Screen name="MoreTab" component={MoreScreen} options={{ title: 'More', ...tabOptions('More', 'more_horiz') }} />
-    </Tab.Navigator>
+      </Tab.Navigator>
+      <MoreSectionsSheet
+        visible={isMoreOpen}
+        activeKey={activeMoreKey}
+        onClose={() => setIsMoreOpen(false)}
+        onSelect={selectMoreItem}
+      />
+    </>
   );
 }
 

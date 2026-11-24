@@ -36,18 +36,19 @@ export default function QualityResultScreen({ route, navigation }: Props) {
     try {
       const data = await getEntry(entryId);
       setEntry(data);
-      // Default: fully accepted, matching the web app's "accept everything" starting point.
+      const savedLines = new Map((data.quality?.lines ?? []).map(line => [line.challan_line_id, line]));
       setLines(
         data.challan_lines.map(line => ({
           challanLineId: line.id,
           material: line.material,
           uom: line.uom,
           challanQty: line.quantity,
-          acceptedQty: String(line.quantity),
-          rejectedQty: '0',
-          remarks: '',
+          acceptedQty: String(savedLines.get(line.id)?.accepted_qty ?? line.quantity),
+          rejectedQty: String(savedLines.get(line.id)?.rejected_qty ?? 0),
+          remarks: savedLines.get(line.id)?.remarks ?? '',
         })),
       );
+      setResultRemarks(data.quality?.remarks ?? '');
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not load this pass.'));
     } finally {

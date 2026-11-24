@@ -17,10 +17,10 @@ const KIND_OPTIONS: { value: WeighmentKind; label: string }[] = [
 ];
 
 export default function WeighCaptureScreen({ route }: Props) {
-  const { entryId, vehicleNumber } = route.params;
+  const { entryId, vehicleNumber, kind: initialKind = 'gross' } = route.params;
   const [entry, setEntry] = useState<PassDetailOut | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [kind, setKind] = useState<WeighmentKind>('gross');
+  const [kind, setKind] = useState<WeighmentKind>(initialKind);
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState<WeightUnit>('kg');
   const [manualReason, setManualReason] = useState('');

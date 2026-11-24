@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -14,7 +15,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { listEntries } from '../../api/entries';
+import { gateOutEntry, getEntry, listEntries } from '../../api/entries';
 import { PassState, PassType, VehicleEntryOut } from '../../types/entries';
 import { EmptyState, ErrorBanner, Input, LoadingView } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
@@ -205,6 +206,35 @@ function getStatus(entry: VehicleEntryOut): { label: string; tone: Tone } {
   }
 }
 
+function getGateOutStatus(entry: VehicleEntryOut): { label: string; tone: Tone } {
+  if (entry.pass_state === 'GRN_APPROVED') {
+    if (entry.erp_status === 'not_required') return { label: 'RETURN ONLY — NO GRN', tone: 'warn' };
+    if (entry.erp_status === 'pending' || entry.erp_status === 'failed') {
+      return { label: 'GRN PENDING POST', tone: 'crit' };
+    }
+  }
+  return getStatus(entry);
+}
+
+function isGateOutReady(entry: VehicleEntryOut): boolean {
+  return (
+    (entry.pass_type === 'inward' && entry.pass_state === 'GRN_APPROVED') ||
+    (entry.pass_type === 'general' && entry.pass_state === 'GATE_IN')
+  );
+}
+
+function normalizePlate(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function hasBothWeights(entry: VehicleEntryOut): boolean {
+  return entry.current_gross_kg != null && entry.current_tare_kg != null;
+}
+
+function oldestFirst(a: VehicleEntryOut, b: VehicleEntryOut): number {
+  return new Date(a.entry_time).getTime() - new Date(b.entry_time).getTime();
+}
+
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={styles.detailRow}>
@@ -271,6 +301,76 @@ function EntryCard({ entry, onPress }: { entry: VehicleEntryOut; onPress: () => 
   );
 }
 
+function GateOutCard({
+  entry,
+  canLetOut,
+  isActing,
+  onOpen,
+  onLetOut,
+}: {
+  entry: VehicleEntryOut;
+  canLetOut: boolean;
+  isActing: boolean;
+  onOpen: () => void;
+  onLetOut: () => void;
+}) {
+  const status = getGateOutStatus(entry);
+  const isInward = entry.pass_type === 'inward';
+  const weighed = hasBothWeights(entry);
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeading}>
+          <Text style={styles.caption}>{isInward ? 'INWARD MATERIAL' : 'GENERAL PASS'}</Text>
+          <View style={styles.plate}>
+            <Text style={styles.plateText}>{formatPlate(entry.vehicle_number)}</Text>
+          </View>
+          {entry.supplier_transporter_name ? (
+            <Text style={styles.gateOutSupplier}>{entry.supplier_transporter_name}</Text>
+          ) : null}
+        </View>
+        <View style={[styles.statusBadge, STATUS_TONE_STYLES[status.tone]]}>
+          <View style={[styles.statusDot, STATUS_DOT_TONE_STYLES[status.tone]]} />
+          <Text style={[styles.statusText, STATUS_TEXT_TONE_STYLES[status.tone]]}>{status.label}</Text>
+        </View>
+      </View>
+
+      <View style={styles.details}>
+        {isInward ? (
+          <>
+            <DetailRow label="PO"><Text style={styles.mono}>{entry.po_number || '-'}</Text></DetailRow>
+            <DetailRow label="Challan"><Text style={styles.mono}>{entry.challan_number || '-'}</Text></DetailRow>
+          </>
+        ) : null}
+        <DetailRow label="Driver"><Text style={styles.valueText}>{entry.driver_name || '-'}</Text></DetailRow>
+        <DetailRow label="Entry"><Text style={styles.valueText}>{formatDateTime(entry.entry_time)}</Text></DetailRow>
+        <DetailRow label="Time on site"><Text style={[styles.valueText, styles.mono]}>{formatDwell(entry)}</Text></DetailRow>
+        <DetailRow label="Weight (kg)"><WeightDetails entry={entry} /></DetailRow>
+      </View>
+
+      {canLetOut ? (
+        <>
+          {!weighed ? <Text style={styles.needsWeights}>Needs both weights before it can leave.</Text> : null}
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Let ${entry.vehicle_number} out`}
+            style={[styles.gateOutButton, (!weighed || isActing) && styles.gateOutButtonDisabled]}
+            disabled={!weighed || isActing}
+            onPress={onLetOut}
+          >
+            <Text style={styles.gateOutButtonText}>{isActing ? 'Letting out...' : 'Let out'}</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <TouchableOpacity accessibilityRole="button" style={styles.openButton} onPress={onOpen}>
+          <Text style={styles.openButtonText}>Open pass</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 export default function EntryListScreen({ route, navigation }: Props) {
   const mode = route.params?.mode ?? 'open';
   const [entries, setEntries] = useState<VehicleEntryOut[]>([]);
@@ -284,6 +384,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [actingEntryId, setActingEntryId] = useState<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true);
@@ -332,7 +433,124 @@ export default function EntryListScreen({ route, navigation }: Props) {
     setDateTo('');
   };
 
+  async function submitGateOut(entry: VehicleEntryOut, rejectedMaterialOnVehicle: boolean) {
+    setActingEntryId(entry.id);
+    setErrorMessage(null);
+    try {
+      await gateOutEntry(entry.id, { rejected_material_on_vehicle: rejectedMaterialOnVehicle });
+      await load(true);
+      Alert.alert('Gate-out complete', `${entry.vehicle_number} has been let out.`);
+    } catch (error) {
+      setErrorMessage(extractErrorMessage(error, 'Failed to let the vehicle out.'));
+    } finally {
+      setActingEntryId(null);
+    }
+  }
+
+  async function confirmGateOut(entry: VehicleEntryOut) {
+    setActingEntryId(entry.id);
+    setErrorMessage(null);
+    try {
+      const detail = entry.pass_type === 'inward' ? await getEntry(entry.id) : null;
+      const rejectedQuantity = detail?.grn?.total_rejected_qty ?? 0;
+      const hasRejectedMaterial = rejectedQuantity > 0;
+      Alert.alert(
+        hasRejectedMaterial ? 'Rejected material on board' : 'Confirm gate-out',
+        hasRejectedMaterial
+          ? `${rejectedQuantity} rejected material is recorded. Confirm it remains on this vehicle before letting it out.`
+          : `Record ${entry.vehicle_number} as exited from the site?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: hasRejectedMaterial ? 'Confirm and let out' : 'Let out',
+            onPress: () => submitGateOut(entry, hasRejectedMaterial),
+          },
+        ],
+      );
+    } catch (error) {
+      setErrorMessage(extractErrorMessage(error, 'Could not load pass details.'));
+    } finally {
+      setActingEntryId(null);
+    }
+  }
+
   if (isLoading) return <LoadingView />;
+
+  if (mode === 'open') {
+    const query = normalizePlate(search.trim());
+    const matchesSearch = (entry: VehicleEntryOut) =>
+      !query || normalizePlate(entry.vehicle_number).includes(query);
+    const readyEntries = entries.filter(isGateOutReady).filter(matchesSearch).sort(oldestFirst);
+    const atGateEntries = entries
+      .filter(entry => entry.pass_type === 'inward' && entry.pass_state === 'GATE_IN')
+      .filter(matchesSearch)
+      .sort(oldestFirst);
+
+    return (
+      <FlatList
+        style={styles.screen}
+        data={readyEntries}
+        keyExtractor={item => String(item.id)}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+        ListHeaderComponent={
+          <View>
+            {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
+            <View style={styles.gateOutHeader}>
+              <Text style={styles.filterLabel}>Search vehicle number</Text>
+              <Input
+                value={search}
+                onChangeText={setSearch}
+                placeholder="e.g. MH12AB1234"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                style={styles.gateOutSearchInput}
+              />
+              <Text style={styles.gateOutTitle}>Ready to leave</Text>
+              <Text style={styles.gateOutHint}>
+                Inward passes with an approved GRN, and other vehicles on site.
+              </Text>
+            </View>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <GateOutCard
+            entry={item}
+            canLetOut
+            isActing={actingEntryId === item.id}
+            onOpen={() => navigation.navigate('EntryDetail', { entryId: item.id })}
+            onLetOut={() => confirmGateOut(item)}
+          />
+        )}
+        ListEmptyComponent={
+          <Text style={styles.gateOutEmpty}>
+            {query ? 'No vehicle matches this number.' : 'No vehicle is ready to leave.'}
+          </Text>
+        }
+        ListFooterComponent={
+          atGateEntries.length > 0 ? (
+            <View style={styles.atGateSection}>
+              <Text style={styles.atGateTitle}>At the gate, not weighed yet</Text>
+              <Text style={styles.atGateHint}>
+                Inward passes before the gross weight. They cannot leave yet; open a pass to cancel it if the vehicle is turned back.
+              </Text>
+              {atGateEntries.map(entry => (
+                <GateOutCard
+                  key={entry.id}
+                  entry={entry}
+                  canLetOut={false}
+                  isActing={false}
+                  onOpen={() => navigation.navigate('EntryDetail', { entryId: entry.id })}
+                  onLetOut={() => undefined}
+                />
+              ))}
+            </View>
+          ) : undefined
+        }
+      />
+    );
+  }
 
   return (
     <FlatList
@@ -411,7 +629,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
       renderItem={({ item }) => (
         <EntryCard entry={item} onPress={() => navigation.navigate('EntryDetail', { entryId: item.id })} />
       )}
-      ListEmptyComponent={<EmptyState message={hasFilters ? 'No passes match these filters.' : mode === 'open' ? 'No vehicles currently on site.' : 'No passes found.'} />}
+      ListEmptyComponent={<EmptyState message={hasFilters ? 'No passes match these filters.' : 'No passes found.'} />}
     />
   );
 }
@@ -419,6 +637,14 @@ export default function EntryListScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
   listContent: { paddingBottom: 24 },
+  gateOutHeader: { paddingHorizontal: 8, paddingTop: 18, paddingBottom: 4 },
+  gateOutSearchInput: { minHeight: 44, fontSize: 13, borderRadius: 8, paddingVertical: 10 },
+  gateOutTitle: { color: '#131a22', fontSize: 20, fontWeight: '700', marginTop: 21 },
+  gateOutHint: { color: '#526171', fontSize: 12, lineHeight: 17, marginTop: 4 },
+  gateOutEmpty: { color: '#526171', fontSize: 13, marginHorizontal: 8, paddingVertical: 14 },
+  atGateSection: { marginTop: 12, paddingHorizontal: 8 },
+  atGateTitle: { color: '#131a22', fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  atGateHint: { color: '#526171', fontSize: 12, lineHeight: 17, marginBottom: 4 },
   searchCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -491,6 +717,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   cardHeading: { flex: 1, minWidth: 0 },
   caption: { color: '#34445a', fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginBottom: 5 },
+  gateOutSupplier: { color: '#526171', fontSize: 11, marginTop: 4 },
   plate: {
     alignSelf: 'flex-start',
     backgroundColor: '#facc15',
@@ -522,4 +749,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   openButtonText: { color: '#17202b', fontSize: 12, fontWeight: '600' },
+  needsWeights: { color: '#80600f', fontSize: 11, fontWeight: '600', marginBottom: 8 },
+  gateOutButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#b8410e',
+    borderRadius: 9,
+  },
+  gateOutButtonDisabled: { opacity: 0.5 },
+  gateOutButtonText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

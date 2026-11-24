@@ -16,6 +16,7 @@ import UsersScreen from '../screens/UsersScreen';
 import AccountScreen from '../screens/AccountScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
+import type { WeighmentKind } from '../types/entries';
 
 // The authenticated area now lives behind a bottom tab navigator (see TabNavigator.tsx,
 // rendered here as the "Main" screen). Screens that need to push on top of the tabs
@@ -28,7 +29,7 @@ export type RootStackParamList = {
   EntryList: { mode: 'open' | 'all' };
   EntryDetail: { entryId: number };
   Weighbridge: undefined;
-  WeighCapture: { entryId: number; vehicleNumber: string };
+  WeighCapture: { entryId: number; vehicleNumber: string; kind?: WeighmentKind };
   QualityQueue: undefined;
   QualityResult: { entryId: number };
   GrnDetail: { entryId: number };
@@ -67,27 +68,75 @@ export default function RootNavigator() {
               component={EntryListScreen}
               options={({ route }) => ({
                 headerShown: true,
-                title: route.params?.mode === 'all' ? 'Entry Log' : 'Gate Out',
-                ...(route.params?.mode === 'all'
-                  ? {
-                      headerStyle: { backgroundColor: '#fff' },
-                      headerTintColor: '#131a22',
-                      headerTitleStyle: { color: '#131a22', fontWeight: '700' as const },
-                      headerTitleAlign: 'left' as const,
-                      headerBackVisible: false,
-                      headerLeft: BrandHeaderMark,
-                      headerRight: BrandHeaderAvatar,
-                    }
-                  : HEADER_OPTIONS),
+                title: route.params?.mode === 'all' ? 'Entry Log' : 'Gate-out',
+                headerStyle: { backgroundColor: '#fff' },
+                headerTintColor: '#131a22',
+                headerTitleStyle: { color: '#131a22', fontWeight: '700' as const },
+                headerTitleAlign: 'left' as const,
+                headerBackVisible: false,
+                headerLeft: BrandHeaderMark,
+                headerRight: BrandHeaderAvatar,
               })}
             />
-            <Stack.Screen name="EntryDetail" component={EntryDetailScreen} options={{ headerShown: true, title: 'Pass Detail', ...HEADER_OPTIONS }} />
-            <Stack.Screen name="Weighbridge" component={WeighbridgeScreen} options={{ headerShown: true, title: 'Weighbridge', ...HEADER_OPTIONS }} />
+            <Stack.Screen
+              name="EntryDetail"
+              component={EntryDetailScreen}
+              options={{
+                headerShown: true,
+                title: 'Pass details',
+                headerStyle: { backgroundColor: '#fff' },
+                headerTintColor: '#131a22',
+                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerTitleAlign: 'left',
+                headerRight: BrandHeaderAvatar,
+              }}
+            />
+            <Stack.Screen
+              name="Weighbridge"
+              component={WeighbridgeScreen}
+              options={{
+                headerShown: true,
+                title: 'Weighbridge',
+                headerStyle: { backgroundColor: '#fff' },
+                headerTintColor: '#131a22',
+                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerTitleAlign: 'left',
+                headerLeft: BrandHeaderMark,
+                headerRight: BrandHeaderAvatar,
+              }}
+            />
             <Stack.Screen name="WeighCapture" component={WeighCaptureScreen} options={{ headerShown: true, title: 'Capture Weight', ...HEADER_OPTIONS }} />
-            <Stack.Screen name="QualityQueue" component={QualityQueueScreen} options={{ headerShown: true, title: 'Quality Queue', ...HEADER_OPTIONS }} />
+            <Stack.Screen
+              name="QualityQueue"
+              component={QualityQueueScreen}
+              options={{
+                headerShown: true,
+                title: 'Quality',
+                headerStyle: { backgroundColor: '#fff' },
+                headerTintColor: '#131a22',
+                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerTitleAlign: 'left',
+                headerLeft: BrandHeaderMark,
+                headerRight: BrandHeaderAvatar,
+              }}
+            />
             <Stack.Screen name="QualityResult" component={QualityResultScreen} options={{ headerShown: true, title: 'Quality Result', ...HEADER_OPTIONS }} />
             <Stack.Screen name="GrnDetail" component={GrnDetailScreen} options={{ headerShown: true, title: 'GRN', ...HEADER_OPTIONS }} />
-            <Stack.Screen name="Users" component={UsersScreen} options={{ headerShown: true, title: 'Users', ...HEADER_OPTIONS }} />
+            <Stack.Screen
+              name="Users"
+              component={UsersScreen}
+              options={{
+                headerShown: true,
+                title: 'Users',
+                headerStyle: { backgroundColor: '#fff' },
+                headerTintColor: '#131a22',
+                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerTitleAlign: 'left',
+                headerBackVisible: false,
+                headerLeft: BrandHeaderMark,
+                headerRight: BrandHeaderAvatar,
+              }}
+            />
             <Stack.Screen name="Account" component={AccountScreen} options={{ headerShown: true, title: 'Account', ...HEADER_OPTIONS }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings', ...HEADER_OPTIONS }} />
           </>
