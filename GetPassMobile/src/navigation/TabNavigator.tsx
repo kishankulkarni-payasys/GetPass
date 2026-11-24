@@ -12,6 +12,8 @@ import EntryListScreen from '../screens/gate/EntryListScreen';
 import GrnListScreen from '../screens/stores/GrnListScreen';
 import MoreScreen from '../screens/MoreScreen';
 import { colors } from '../components/ui';
+import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
+import { TabBarIcon, TabBarIconName } from '../components/icons/TabBarIcon';
 
 // The bottom tabs for the authenticated area, matching the roles' existing allow-lists in
 // roleActions.ts (which itself mirrors Backend/app/auth.py's role gates). A tab only renders
@@ -32,9 +34,12 @@ export type MainTabScreenProps<T extends keyof MainTabParamList> = CompositeScre
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const HEADER_OPTIONS = {
-  headerStyle: { backgroundColor: '#1a1a2e' },
-  headerTintColor: '#fff',
-  headerTitleStyle: { fontWeight: '700' as const },
+  headerStyle: { backgroundColor: '#fff' },
+  headerTintColor: '#131a22',
+  headerTitleStyle: { color: '#131a22', fontWeight: '700' as const },
+  headerTitleAlign: 'left' as const,
+  headerLeft: BrandHeaderMark,
+  headerRight: BrandHeaderAvatar,
 };
 
 function TabLabel({ label, focused }: { label: string; focused: boolean }) {
@@ -43,8 +48,11 @@ function TabLabel({ label, focused }: { label: string; focused: boolean }) {
   );
 }
 
-function tabLabelOptions(label: string) {
-  return { tabBarLabel: ({ focused }: { focused: boolean }) => <TabLabel label={label} focused={focused} /> };
+function tabOptions(label: string, iconName: TabBarIconName) {
+  return {
+    tabBarIcon: ({ color }: { color: string }) => <TabBarIcon name={iconName} color={color} />,
+    tabBarLabel: ({ focused }: { focused: boolean }) => <TabLabel label={label} focused={focused} />,
+  };
 }
 
 // EntryListScreen is shared with the top-level stack's own "EntryList" screen (pushed from
@@ -75,23 +83,23 @@ export default function TabNavigator() {
       }}
     >
       {showDashboard ? (
-        <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ title: 'Dashboard', ...tabLabelOptions('Dashboard') }} />
+        <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ title: 'Dashboard', ...tabOptions('Dashboard', 'dashboard') }} />
       ) : null}
       {showGateIn ? (
-        <Tab.Screen name="GateInTab" component={NewEntryScreen} options={{ title: 'Gate In', ...tabLabelOptions('Gate In') }} />
+        <Tab.Screen name="GateInTab" component={NewEntryScreen} options={{ title: 'Gate-in', ...tabOptions('Gate In', 'meeting_room') }} />
       ) : null}
       {showEntryLog ? (
         <Tab.Screen
           name="EntryLogTab"
           component={EntryLogTabScreen}
           initialParams={{ mode: 'all' }}
-          options={{ title: 'Entry Log', ...tabLabelOptions('Entry Log') }}
+          options={{ title: 'Entry Log', ...tabOptions('Entry Log', 'receipt_long') }}
         />
       ) : null}
       {showStores ? (
-        <Tab.Screen name="StoresTab" component={GrnListScreen} options={{ title: 'Stores / GRN', ...tabLabelOptions('Stores/GRN') }} />
+        <Tab.Screen name="StoresTab" component={GrnListScreen} options={{ title: 'Stores / GRN', ...tabOptions('Stores/GRN', 'inventory_2') }} />
       ) : null}
-      <Tab.Screen name="MoreTab" component={MoreScreen} options={{ title: 'More', ...tabLabelOptions('More') }} />
+      <Tab.Screen name="MoreTab" component={MoreScreen} options={{ title: 'More', ...tabOptions('More', 'more_horiz') }} />
     </Tab.Navigator>
   );
 }

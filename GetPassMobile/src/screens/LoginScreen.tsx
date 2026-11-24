@@ -62,6 +62,9 @@ const PALETTE = {
 function extractErrorMessage(error: unknown): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
   if (typeof detail === 'string' && detail.length > 0) return detail;
+  if ((error as { request?: unknown })?.request) {
+    return 'Cannot reach the server. Check that your phone and computer are on the same Wi-Fi network.';
+  }
   return 'Unable to sign in. Check your connection and try again.';
 }
 

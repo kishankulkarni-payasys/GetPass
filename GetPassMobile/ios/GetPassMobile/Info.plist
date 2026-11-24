@@ -34,6 +34,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>GetPass uses the camera to scan QR codes and capture gate-in documents.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GetPass uses selected photos as gate-in documents attached to a pass.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>RCTNewArchEnabled</key>

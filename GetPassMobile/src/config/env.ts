@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
@@ -20,6 +20,21 @@ const DEFAULT_HOST_BY_PLATFORM: Record<string, string> = {
 const STORAGE_KEY = 'getpass.apiBaseUrl';
 
 function buildDefaultBaseUrl(): string {
+  const sourceCode = NativeModules.SourceCode as
+    | { scriptURL?: string; getConstants?: () => { scriptURL?: string } }
+    | undefined;
+  const scriptUrl = sourceCode?.getConstants?.().scriptURL ?? sourceCode?.scriptURL;
+  if (Platform.OS === 'android' && scriptUrl) {
+    try {
+      const metroHost = new URL(scriptUrl).hostname;
+      if (metroHost) {
+        return `http://${metroHost}:${DEFAULT_PORT}`;
+      }
+    } catch {
+      // Fall through to the emulator/localhost platform default.
+    }
+  }
+
   const host = DEFAULT_HOST_BY_PLATFORM[Platform.OS] ?? 'localhost';
   return `http://${host}:${DEFAULT_PORT}`;
 }

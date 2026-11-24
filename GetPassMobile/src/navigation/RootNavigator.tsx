@@ -15,6 +15,7 @@ import GrnDetailScreen from '../screens/stores/GrnDetailScreen';
 import UsersScreen from '../screens/UsersScreen';
 import AccountScreen from '../screens/AccountScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
 
 // The authenticated area now lives behind a bottom tab navigator (see TabNavigator.tsx,
 // rendered here as the "Main" screen). Screens that need to push on top of the tabs
@@ -67,7 +68,17 @@ export default function RootNavigator() {
               options={({ route }) => ({
                 headerShown: true,
                 title: route.params?.mode === 'all' ? 'Entry Log' : 'Gate Out',
-                ...HEADER_OPTIONS,
+                ...(route.params?.mode === 'all'
+                  ? {
+                      headerStyle: { backgroundColor: '#fff' },
+                      headerTintColor: '#131a22',
+                      headerTitleStyle: { color: '#131a22', fontWeight: '700' as const },
+                      headerTitleAlign: 'left' as const,
+                      headerBackVisible: false,
+                      headerLeft: BrandHeaderMark,
+                      headerRight: BrandHeaderAvatar,
+                    }
+                  : HEADER_OPTIONS),
               })}
             />
             <Stack.Screen name="EntryDetail" component={EntryDetailScreen} options={{ headerShown: true, title: 'Pass Detail', ...HEADER_OPTIONS }} />
