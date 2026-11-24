@@ -121,7 +121,19 @@ export default function RootNavigator() {
               }}
             />
             <Stack.Screen name="QualityResult" component={QualityResultScreen} options={{ headerShown: true, title: 'Quality Result', ...HEADER_OPTIONS }} />
-            <Stack.Screen name="GrnDetail" component={GrnDetailScreen} options={{ headerShown: true, title: 'GRN', ...HEADER_OPTIONS }} />
+            <Stack.Screen
+              name="GrnDetail"
+              component={GrnDetailScreen}
+              options={{
+                headerShown: true,
+                title: 'Stores / GRN',
+                headerStyle: { backgroundColor: '#fff' },
+                headerTintColor: '#131a22',
+                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerTitleAlign: 'left',
+                headerRight: BrandHeaderAvatar,
+              }}
+            />
             <Stack.Screen
               name="Users"
               component={UsersScreen}
