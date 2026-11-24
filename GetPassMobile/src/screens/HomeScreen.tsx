@@ -1,20 +1,22 @@
 import React from 'react';
 import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthContext';
 import { getActionsForRole, RoleAction } from '../navigation/roleActions';
+import { RootStackParamList } from '../navigation/RootNavigator';
 
-// Placeholder shell: tapping an action currently just confirms navigation would
-// occur here. Each one becomes a real screen in a follow-up pass (see report).
-function ActionCard({ action }: { action: RoleAction }) {
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+function ActionCard({ action, onPress }: { action: RoleAction; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onPress}>
       <Text style={styles.cardLabel}>{action.label}</Text>
     </TouchableOpacity>
   );
 }
 
-export default function HomeScreen() {
-  const { user, signOut } = useAuth();
+export default function HomeScreen({ navigation }: Props) {
+  const { user } = useAuth();
   const actions = user ? getActionsForRole(user.role) : [];
 
   return (
@@ -24,8 +26,8 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>Hi, {user?.full_name}</Text>
           <Text style={styles.role}>{user?.role.replace('_', ' ')}</Text>
         </View>
-        <TouchableOpacity onPress={signOut}>
-          <Text style={styles.signOut}>Sign out</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Account')}>
+          <Text style={styles.accountLink}>Account</Text>
         </TouchableOpacity>
       </View>
 
@@ -35,7 +37,16 @@ export default function HomeScreen() {
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => <ActionCard action={item} />}
+        renderItem={({ item }) => (
+          <ActionCard
+            action={item}
+            onPress={() =>
+              item.screen === 'EntryList'
+                ? navigation.navigate('EntryList', { mode: 'open' })
+                : navigation.navigate(item.screen as never)
+            }
+          />
+        )}
         ListEmptyComponent={<Text style={styles.empty}>No actions available for this role yet.</Text>}
       />
     </SafeAreaView>
@@ -53,7 +64,7 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 20, fontWeight: '700', color: '#1a1a2e' },
   role: { fontSize: 13, color: '#888', textTransform: 'capitalize', marginTop: 2 },
-  signOut: { color: '#c0392b', fontWeight: '600' },
+  accountLink: { color: '#1a1a2e', fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingBottom: 16 },
   row: { justifyContent: 'space-between' },
   card: {

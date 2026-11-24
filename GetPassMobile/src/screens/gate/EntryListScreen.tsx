@@ -12,7 +12,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EntryList'>;
 
 const OPEN_STATES = ['GATE_IN', 'ON_SITE', 'QUALITY_PENDING', 'QUALITY_RESOLVED', 'GRN_DRAFT', 'GRN_APPROVED'] as const;
 
-const STATE_TONE: Record<string, keyof typeof pillTone> = {
+type PillTone = 'good' | 'warn' | 'crit' | 'info' | 'neutral';
+
+const STATE_TONE: Record<string, PillTone> = {
   GATE_IN: 'warn',
   ON_SITE: 'warn',
   QUALITY_PENDING: 'crit',
@@ -22,7 +24,6 @@ const STATE_TONE: Record<string, keyof typeof pillTone> = {
   GATE_OUT: 'neutral',
   CANCELLED: 'neutral',
 };
-const pillTone = { warn: 1, crit: 1, good: 1, info: 1, neutral: 1 };
 
 function EntryRow({ entry, onPress }: { entry: VehicleEntryOut; onPress: () => void }) {
   return (
