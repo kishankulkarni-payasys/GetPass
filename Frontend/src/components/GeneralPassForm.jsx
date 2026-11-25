@@ -1,4 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { entryKeys } from '../api/queryKeys'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { apiErrorMessage } from '../i18n/apiErrors'
@@ -84,11 +86,13 @@ function FormField({ field, value, onChange }) {
 export default function GeneralPassForm({ online, onCreated }) {
   const { t } = useLanguage()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const [form, setForm] = useState(EMPTY_FORM)
   const [clientRef, setClientRef] = useState(newClientRef)
   const [usedQr, setUsedQr] = useState(false)
   const [scanning, setScanning] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const submitMutation = useMutation({ mutationFn: submitGateInPass })
+  const submitting = submitMutation.isPending
   const canSubmit = form.vehicle_number.trim() !== '' && form.driver_name.trim() !== ''
 
   const handleChange = ({ target: { name, value } }) => setForm((prev) => ({ ...prev, [name]: value }))
@@ -104,19 +108,19 @@ export default function GeneralPassForm({ online, onCreated }) {
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (!canSubmit || submitting) return
-    setSubmitting(true)
     try {
-      const result = await submitGateInPass({ payload: buildGeneralPayload(form, clientRef, usedQr), photos: {}, online })
+      const result = await submitMutation.mutateAsync({ payload: buildGeneralPayload(form, clientRef, usedQr), photos: {}, online })
       const queued = result.outcome === SUBMIT_OUTCOMES.queued
       showToast(t(queued ? 'gateInToastQueued' : 'gateInToastCreated'), queued ? 'info' : 'success')
+      // A queued pass has no server row yet; the offline queue's own sync
+      // invalidates this once it is actually sent (see api/queryClient.js).
+      if (!queued) queryClient.invalidateQueries({ queryKey: entryKeys.all })
       onCreated(result)
       setForm(EMPTY_FORM)
       setUsedQr(false)
       setClientRef(newClientRef())
     } catch (err) {
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'gateInToastFailed'), 'error')
-    } finally {
-      setSubmitting(false)
     }
   }
 

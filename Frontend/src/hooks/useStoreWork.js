@@ -1,78 +1,72 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { approveGrn, editGrnLines, getGrn, getStoreWorkList, retryGrnPost } from '../api/grn'
 import { getEntry } from '../api/entries'
+import { entryKeys, grnKeys } from '../api/queryKeys'
 import { apiErrorDetail } from '../i18n/apiErrors'
 
 // Store work list (GET /grn): send for inspection, ready for GRN, drafts, pending ERP post.
 export function useStoreWorkList() {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [failed, setFailed] = useState(false)
-  const [errorDetail, setErrorDetail] = useState(null)
+  const query = useQuery({
+    queryKey: grnKeys.list(),
+    queryFn: () => getStoreWorkList(),
+  })
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setFailed(false)
-    try {
-      setItems(await getStoreWorkList())
-    } catch (err) {
-      setFailed(true)
-      setErrorDetail(apiErrorDetail(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  return { items, loading, failed, errorDetail, refresh }
+  return {
+    items: query.data ?? [],
+    loading: query.isFetching,
+    failed: query.isError,
+    errorDetail: query.isError ? apiErrorDetail(query.error) : null,
+    refresh: query.refetch,
+  }
 }
 
 // One GRN plus its pass (for PO, challan and gross weight in the header).
 // Actions return the updated GRN and throw API errors for the screen to show.
 export function useGrnRecord(entryId) {
-  const [grn, setGrn] = useState(null)
-  const [pass, setPass] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [errorDetail, setErrorDetail] = useState(null)
-  const [failed, setFailed] = useState(false)
+  const queryClient = useQueryClient()
+  const [grnQuery, passQuery] = useQueries({
+    queries: [
+      { queryKey: grnKeys.detail(entryId), queryFn: () => getGrn(entryId) },
+      { queryKey: entryKeys.detail(entryId), queryFn: () => getEntry(entryId) },
+    ],
+  })
 
-  const reload = useCallback(async () => {
-    setLoading(true)
-    setFailed(false)
-    try {
-      const [grnData, passData] = await Promise.all([getGrn(entryId), getEntry(entryId)])
-      setGrn(grnData)
-      setPass(passData)
-    } catch (err) {
-      setFailed(true)
-      setErrorDetail(apiErrorDetail(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [entryId])
+  const loading = grnQuery.isLoading || passQuery.isLoading
+  const failed = grnQuery.isError || passQuery.isError
+  const errorDetail = failed ? apiErrorDetail(grnQuery.error ?? passQuery.error) : null
 
-  useEffect(() => {
-    reload()
-  }, [reload])
+  const reload = () => Promise.all([grnQuery.refetch(), passQuery.refetch()])
 
-  const runAndStore = useCallback(async (action) => {
-    const updated = await action()
-    setGrn(updated)
-    return updated
-  }, [])
+  // Shared by all three actions: write the updated GRN straight into the
+  // cache (so the editor shows it at once) and mark the work list stale,
+  // since approve/retry/save-lines each change which group this entry sits in.
+  const onActionSuccess = (updated) => {
+    queryClient.setQueryData(grnKeys.detail(entryId), updated)
+    queryClient.invalidateQueries({ queryKey: grnKeys.list() })
+  }
+
+  const saveLinesMutation = useMutation({
+    mutationFn: (lines) => editGrnLines(entryId, lines),
+    onSuccess: onActionSuccess,
+  })
+  const approveMutation = useMutation({
+    mutationFn: () => approveGrn(entryId),
+    onSuccess: onActionSuccess,
+  })
+  const retryPostMutation = useMutation({
+    mutationFn: () => retryGrnPost(entryId),
+    onSuccess: onActionSuccess,
+  })
 
   return {
-    grn,
-    pass,
+    grn: grnQuery.data ?? null,
+    pass: passQuery.data ?? null,
     loading,
     failed,
     errorDetail,
     reload,
-    saveLines: (lines) => runAndStore(() => editGrnLines(entryId, lines)),
-    approve: () => runAndStore(() => approveGrn(entryId)),
-    retryPost: () => runAndStore(() => retryGrnPost(entryId)),
+    saveLines: (lines) => saveLinesMutation.mutateAsync(lines),
+    approve: () => approveMutation.mutateAsync(),
+    retryPost: () => retryPostMutation.mutateAsync(),
   }
 }

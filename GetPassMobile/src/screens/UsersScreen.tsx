@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,9 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { createUser, deleteUser, listUsers, updateUser } from '../api/users';
+import { useCreateUser, useDeleteUser, useUpdateUser, useUserList } from '../queries/useUserQueries';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorBanner, FieldLabel, Input, LoadingView } from '../components/ui';
 import { UserRole } from '../types/auth';
@@ -166,45 +165,30 @@ function UserCard({
 
 export default function UsersScreen() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<UserOut[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { data: fetchedUsers, isLoading, isRefetching: isRefreshing, error: loadError, refetch } = useUserList();
+  const [actionError, setActionError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole>('security_guard');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [mutatingUserId, setMutatingUserId] = useState<number | null>(null);
 
-  const load = useCallback(async (refresh = false) => {
-    refresh ? setIsRefreshing(true) : setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      setUsers(await listUsers());
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load users.'));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+  const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
+  const deleteUserMutation = useDeleteUser();
+  const isSubmitting = createUserMutation.isPending;
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const users = fetchedUsers ?? [];
+  const errorMessage = actionError ?? (loadError ? extractErrorMessage(loadError, 'Could not load users.') : null);
 
   async function handleToggleActive(target: UserOut) {
-    setErrorMessage(null);
+    setActionError(null);
     setMutatingUserId(target.id);
     try {
-      const updated = await updateUser(target.id, { is_active: !target.is_active });
-      setUsers(current => current.map(item => item.id === updated.id ? updated : item));
+      await updateUserMutation.mutateAsync({ userId: target.id, payload: { is_active: !target.is_active } });
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not update that user.'));
+      setActionError(extractErrorMessage(error, 'Could not update that user.'));
     } finally {
       setMutatingUserId(null);
     }
@@ -212,26 +196,24 @@ export default function UsersScreen() {
 
   async function handleRoleChange(target: UserOut, nextRole: UserRole) {
     if (target.role === nextRole) return;
-    setErrorMessage(null);
+    setActionError(null);
     setMutatingUserId(target.id);
     try {
-      const updated = await updateUser(target.id, { role: nextRole });
-      setUsers(current => current.map(item => item.id === updated.id ? updated : item));
+      await updateUserMutation.mutateAsync({ userId: target.id, payload: { role: nextRole } });
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not update that user.'));
+      setActionError(extractErrorMessage(error, 'Could not update that user.'));
     } finally {
       setMutatingUserId(null);
     }
   }
 
   async function performDelete(target: UserOut) {
-    setErrorMessage(null);
+    setActionError(null);
     setMutatingUserId(target.id);
     try {
-      await deleteUser(target.id);
-      setUsers(current => current.filter(item => item.id !== target.id));
+      await deleteUserMutation.mutateAsync(target.id);
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not delete that user.'));
+      setActionError(extractErrorMessage(error, 'Could not delete that user.'));
     } finally {
       setMutatingUserId(null);
     }
@@ -251,20 +233,16 @@ export default function UsersScreen() {
   const canSubmit = username.trim().length >= 3 && password.length >= 8 && fullName.trim().length > 0 && !isSubmitting;
 
   async function handleCreate() {
-    setErrorMessage(null);
-    setIsSubmitting(true);
+    setActionError(null);
     try {
-      const created = await createUser({ username: username.trim(), password, full_name: fullName.trim(), role });
-      setUsers(current => [...current, created].sort((first, second) => first.username.localeCompare(second.username)));
+      await createUserMutation.mutateAsync({ username: username.trim(), password, full_name: fullName.trim(), role });
       setUsername('');
       setPassword('');
       setFullName('');
       setRole('security_guard');
       setShowCreateForm(false);
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not create that user.'));
-    } finally {
-      setIsSubmitting(false);
+      setActionError(extractErrorMessage(error, 'Could not create that user.'));
     }
   }
 
@@ -277,7 +255,7 @@ export default function UsersScreen() {
       data={users}
       keyExtractor={item => String(item.id)}
       keyboardShouldPersistTaps="handled"
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
       ListHeaderComponent={
         <>
           {errorMessage ? <ErrorBanner message={errorMessage} /> : null}

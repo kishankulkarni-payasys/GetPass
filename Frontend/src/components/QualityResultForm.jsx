@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { saveQualityResult } from '../api/quality'
+import { qualityKeys } from '../api/queryKeys'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { apiErrorMessage } from '../i18n/apiErrors'
@@ -151,19 +153,21 @@ function toRequestBody(lines, remarks) {
 function useQualitySubmit(pass, onSaved) {
   const { t } = useLanguage()
   const { showToast } = useToast()
-  const [submitting, setSubmitting] = useState(false)
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: (body) => saveQualityResult(pass.id, body),
+  })
   const submit = async (body) => {
-    setSubmitting(true)
     try {
-      await saveQualityResult(pass.id, body)
+      await mutation.mutateAsync(body)
       showToast(t('qualityToastSaved'), 'success')
+      queryClient.invalidateQueries({ queryKey: qualityKeys.queue() })
       onSaved()
     } catch (err) {
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'qualityToastSaveFailed'), 'error')
-      setSubmitting(false)
     }
   }
-  return { submitting, submit }
+  return { submitting: mutation.isPending, submit }
 }
 
 // Per challan line accepted / rejected quantity form, shown in a sheet from QualityPage.

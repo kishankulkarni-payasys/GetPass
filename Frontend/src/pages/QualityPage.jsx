@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getQualityQueue } from '../api/quality'
+import { qualityKeys } from '../api/queryKeys'
 import QualityResultForm from '../components/QualityResultForm'
 import Button from '../components/ui/Button'
 import ListState from '../components/ui/ListState'
@@ -14,28 +16,13 @@ import { formatDwell } from '../utils/dwell'
 import { PASS_STATES, PASS_TYPES } from '../utils/passStates'
 
 function useQualityQueue() {
-  const [queue, setQueue] = useState([])
-  const [loading, setLoading] = useState(true)
+  const query = useQuery({
+    queryKey: qualityKeys.queue(),
+    queryFn: getQualityQueue,
+  })
   // { detail } with the raw server text, translated at render time.
-  const [loadError, setLoadError] = useState(null)
-
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setLoadError(null)
-    try {
-      setQueue(await getQualityQueue())
-    } catch (err) {
-      setLoadError({ detail: apiErrorDetail(err) })
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  return { queue, loading, loadError, refresh }
+  const loadError = query.isError ? { detail: apiErrorDetail(query.error) } : null
+  return { queue: query.data ?? [], loading: query.isFetching, loadError, refresh: query.refetch }
 }
 
 function WaitingTime({ pass }) {

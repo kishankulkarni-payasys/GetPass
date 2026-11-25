@@ -1,12 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { getEntry } from '../../api/entries';
-import { captureWeighment, readIndicator } from '../../api/weighments';
-import { PassDetailOut, WeighmentKind, WeightUnit } from '../../types/entries';
+import { useEntryDetail } from '../../queries/useEntryQueries';
+import { useCaptureWeighment, useReadIndicator } from '../../queries/useWeighmentQueries';
+import { WeighmentKind, WeightUnit } from '../../types/entries';
 import { Button, Card, ErrorBanner, FieldLabel, Input, LoadingView, colors } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 
@@ -19,41 +18,26 @@ const KIND_OPTIONS: { value: WeighmentKind; label: string }[] = [
 
 export default function WeighCaptureScreen({ route }: Props) {
   const { entryId, vehicleNumber, kind: initialKind = 'gross' } = route.params;
-  const [entry, setEntry] = useState<PassDetailOut | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: entry, isLoading } = useEntryDetail(entryId);
   const [kind, setKind] = useState<WeighmentKind>(initialKind);
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState<WeightUnit>('kg');
   const [manualReason, setManualReason] = useState('');
   const [supersedeReason, setSupersedeReason] = useState('');
   const [indicatorMessage, setIndicatorMessage] = useState<string | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      setEntry(await getEntry(entryId));
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load this pass.'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entryId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const captureWeighmentMutation = useCaptureWeighment();
+  const readIndicatorMutation = useReadIndicator();
+  const isCapturing = captureWeighmentMutation.isPending;
 
   const hasExisting = kind === 'gross' ? entry?.current_gross_kg != null : entry?.current_tare_kg != null;
 
   async function tryIndicator() {
     setIndicatorMessage(null);
     try {
-      const reading = await readIndicator();
+      const reading = await readIndicatorMutation.mutateAsync();
       if (!reading.available) {
         setIndicatorMessage('No weighbridge indicator is configured here. Enter the weight manually.');
         return;
@@ -77,25 +61,24 @@ export default function WeighCaptureScreen({ route }: Props) {
   async function handleCapture() {
     setErrorMessage(null);
     setSuccessMessage(null);
-    setIsCapturing(true);
     try {
-      await captureWeighment(entryId, {
-        kind,
-        source: 'manual',
-        weight: Number(weight),
-        unit,
-        manual_reason: manualReason.trim(),
-        supersede_reason: hasExisting ? supersedeReason.trim() : undefined,
+      await captureWeighmentMutation.mutateAsync({
+        entryId,
+        payload: {
+          kind,
+          source: 'manual',
+          weight: Number(weight),
+          unit,
+          manual_reason: manualReason.trim(),
+          supersede_reason: hasExisting ? supersedeReason.trim() : undefined,
+        },
       });
       setSuccessMessage(`${kind === 'gross' ? 'Gross' : 'Tare'} weight captured for ${vehicleNumber}.`);
       setWeight('');
       setManualReason('');
       setSupersedeReason('');
-      await load();
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not capture the weight.'));
-    } finally {
-      setIsCapturing(false);
     }
   }
 

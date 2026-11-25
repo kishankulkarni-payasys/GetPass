@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { uploadPhotos } from '../api/entries'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
@@ -165,12 +166,15 @@ function OtherWeighPhotos({ photos }) {
 function WeighingPhotos({ pass, group, photos, onUploaded }) {
   const { t } = useLanguage()
   const { showToast } = useToast()
-  const [uploading, setUploading] = useState(false)
   const [capturing, setCapturing] = useState(false)
   // A ref, not state, so two uploads started in the same tick still see the lock.
   const uploadingRef = useRef(false)
   const weighment = (pass.weighments ?? []).find((row) => row.kind === group.kind && !row.is_superseded)
   const titleId = `weigh-photos-${group.kind}-title`
+  const uploadMutation = useMutation({
+    mutationFn: (files) => uploadPhotos(pass.id, files, { kind: WEIGH_FRAME_KIND, weighmentId: weighment?.id }),
+  })
+  const uploading = uploadMutation.isPending
 
   const handleUpload = async (files) => {
     if (files.length === 0 || !weighment) return
@@ -179,16 +183,14 @@ function WeighingPhotos({ pass, group, photos, onUploaded }) {
       return
     }
     uploadingRef.current = true
-    setUploading(true)
     try {
-      await uploadPhotos(pass.id, files, { kind: WEIGH_FRAME_KIND, weighmentId: weighment.id })
+      await uploadMutation.mutateAsync(files)
       showToast(t('weighbridgeToastPhotoUploaded'), 'success')
       onUploaded()
     } catch (err) {
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'weighbridgeToastUploadFailed'), 'error')
     } finally {
       uploadingRef.current = false
-      setUploading(false)
     }
   }
 

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { cancelPass, getPassDetail, getPassGrn, letPassOut } from '../api/gateOut'
+import { entryKeys, gateOutKeys } from '../api/queryKeys'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { apiErrorDetail, apiErrorMessage, translateApiDetail } from '../i18n/apiErrors'
@@ -25,30 +27,30 @@ function hasRejectedMaterial(detail) {
   return Number(detail?.grn?.total_rejected_qty ?? 0) > 0
 }
 
+async function loadExitDetails(entryId) {
+  const detail = await getPassDetail(entryId)
+  const grn = hasRejectedMaterial(detail) ? await getPassGrn(entryId) : null
+  const rejectedLines = (grn?.lines ?? []).filter((line) => Number(line.rejected_qty) > 0)
+  return { detail, rejectedLines }
+}
+
 // Detail (GRN summary) and, when material was rejected, the GRN lines that
 // list what goes back on the vehicle. General passes need neither.
 function useExitDetails(pass) {
   const isInward = pass.pass_type === PASS_TYPES.inward
-  const [state, setState] = useState({ loading: isInward, errorDetail: null, detail: null, rejectedLines: [] })
+  const query = useQuery({
+    queryKey: gateOutKeys.exitDetails(pass.id),
+    queryFn: () => loadExitDetails(pass.id),
+    enabled: isInward,
+  })
 
-  const load = useCallback(async () => {
-    if (!isInward) return
-    setState((prev) => ({ ...prev, loading: true, errorDetail: null }))
-    try {
-      const detail = await getPassDetail(pass.id)
-      const grn = hasRejectedMaterial(detail) ? await getPassGrn(pass.id) : null
-      const rejectedLines = (grn?.lines ?? []).filter((line) => Number(line.rejected_qty) > 0)
-      setState({ loading: false, errorDetail: null, detail, rejectedLines })
-    } catch (err) {
-      setState((prev) => ({ ...prev, loading: false, errorDetail: apiErrorDetail(err) }))
-    }
-  }, [isInward, pass.id])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  return { ...state, reload: load }
+  return {
+    loading: isInward && query.isLoading,
+    errorDetail: query.isError ? apiErrorDetail(query.error) : null,
+    detail: query.data?.detail ?? null,
+    rejectedLines: query.data?.rejectedLines ?? [],
+    reload: query.refetch,
+  }
 }
 
 function Fact({ label, children }) {
@@ -169,9 +171,13 @@ function ExitSheetBody({ pass, details, confirmed, onConfirmChange }) {
 export function ExitSheet({ pass, onClose, onDone }) {
   const { t } = useLanguage()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const details = useExitDetails(pass)
   const [confirmed, setConfirmed] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const exitMutation = useMutation({
+    mutationFn: (rejectedMaterialOnVehicle) => letPassOut(pass.id, rejectedMaterialOnVehicle),
+  })
+  const submitting = exitMutation.isPending
   const needsConfirmation = hasRejectedMaterial(details.detail)
   const isInward = pass.pass_type === PASS_TYPES.inward
   const ready = !details.loading && details.errorDetail === null && (!isInward || details.detail)
@@ -180,14 +186,13 @@ export function ExitSheet({ pass, onClose, onDone }) {
 
   const handleExit = async () => {
     if (!canSubmit) return
-    setSubmitting(true)
     try {
-      await letPassOut(pass.id, needsConfirmation && confirmed)
+      await exitMutation.mutateAsync(needsConfirmation && confirmed)
       showToast(t('gateOutToastExited'), 'success')
+      queryClient.invalidateQueries({ queryKey: entryKeys.all })
       onDone()
     } catch (err) {
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'gateOutToastExitFailed'), 'error')
-      setSubmitting(false)
     }
   }
 
@@ -222,9 +227,13 @@ export function ExitSheet({ pass, onClose, onDone }) {
 export function CancelSheet({ pass, onClose, onDone }) {
   const { t } = useLanguage()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const [reason, setReason] = useState('')
   const [touched, setTouched] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const cancelMutation = useMutation({
+    mutationFn: (trimmedReason) => cancelPass(pass.id, trimmedReason),
+  })
+  const submitting = cancelMutation.isPending
   const trimmedLength = reason.trim().length
   const tooShort = trimmedLength < MIN_CANCEL_REASON
 
@@ -232,14 +241,13 @@ export function CancelSheet({ pass, onClose, onDone }) {
     event.preventDefault()
     setTouched(true)
     if (tooShort || submitting) return
-    setSubmitting(true)
     try {
-      await cancelPass(pass.id, reason.trim())
+      await cancelMutation.mutateAsync(reason.trim())
       showToast(t('gateOutToastCancelled'), 'success')
+      queryClient.invalidateQueries({ queryKey: entryKeys.all })
       onDone()
     } catch (err) {
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'gateOutToastCancelFailed'), 'error')
-      setSubmitting(false)
     }
   }
 

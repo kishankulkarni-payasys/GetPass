@@ -1,45 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getEntry } from '../api/entries'
+import { entryKeys } from '../api/queryKeys'
 import { apiErrorDetail } from '../i18n/apiErrors'
 
-const NO_RESULT = { passId: null, pass: null, failed: false, errorDetail: null }
-
-// Full pass record (GET /entries/:id). `reload` keeps the old data on screen
-// while it fetches, so a refresh after an action does not flash a skeleton.
-// Pages are not remounted per id, so each result is tagged with the id it was
-// fetched for: pass A is never shown (or used for the breadcrumb) on pass B's URL.
+// Full pass record (GET /entries/:id). The query key carries the id, so React
+// Query already keeps pass A off pass B's screen and shows the fetched data
+// while a reload for the same id runs in the background (isFetching, not
+// isLoading) instead of flashing a skeleton.
 export function usePassDetail(passId) {
-  const [result, setResult] = useState(NO_RESULT)
-  const [fetching, setFetching] = useState(true)
-  const currentIdRef = useRef(passId)
-  currentIdRef.current = passId
+  const query = useQuery({
+    queryKey: entryKeys.detail(passId),
+    queryFn: () => getEntry(passId),
+    enabled: passId !== undefined && passId !== null,
+  })
 
-  const reload = useCallback(async () => {
-    // A slow answer for a pass the user has already left must not land on the new one.
-    const isCurrent = () => currentIdRef.current === passId
-    setFetching(true)
-    try {
-      const pass = await getEntry(passId)
-      if (isCurrent()) setResult({ ...NO_RESULT, passId, pass })
-    } catch (err) {
-      if (!isCurrent()) return
-      const errorDetail = apiErrorDetail(err)
-      setResult((prev) => ({ passId, pass: prev.passId === passId ? prev.pass : null, failed: true, errorDetail }))
-    } finally {
-      if (isCurrent()) setFetching(false)
-    }
-  }, [passId])
-
-  useEffect(() => {
-    reload()
-  }, [reload])
-
-  const isForCurrentId = result.passId === passId
   return {
-    pass: isForCurrentId ? result.pass : null,
-    loading: fetching || !isForCurrentId,
-    failed: isForCurrentId && result.failed,
-    errorDetail: isForCurrentId ? result.errorDetail : null,
-    reload,
+    pass: query.data ?? null,
+    loading: query.isLoading,
+    failed: query.isError,
+    errorDetail: query.isError ? apiErrorDetail(query.error) : null,
+    reload: query.refetch,
   }
 }

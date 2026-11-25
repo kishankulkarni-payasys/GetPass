@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,16 +9,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { approveGrn, editGrnLines, getGrn, retryGrnPost } from '../../api/grn';
-import { getEntry } from '../../api/entries';
+import { useEntryDetail } from '../../queries/useEntryQueries';
+import { useApproveGrn, useEditGrnLines, useGrnDetail, useRetryGrnPost } from '../../queries/useGrnQueries';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorBanner, FieldLabel, Input, LoadingView } from '../../components/ui';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
-import type { PassDetailOut } from '../../types/entries';
-import type { GrnLineOut, GrnOut } from '../../types/grn';
+import type { GrnLineOut } from '../../types/grn';
 import { extractErrorMessage } from '../../utils/apiError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GrnDetail'>;
@@ -155,43 +153,45 @@ function GrnLineCard({
 export default function GrnDetailScreen({ route, navigation }: Props) {
   const { entryId } = route.params;
   const { user } = useAuth();
-  const [grn, setGrn] = useState<GrnOut | null>(null);
-  const [entry, setEntry] = useState<PassDetailOut | null>(null);
+  const {
+    data: grn,
+    isLoading: isGrnLoading,
+    error: grnError,
+    refetch: refetchGrn,
+  } = useGrnDetail(entryId);
+  const { data: entry, isLoading: isEntryLoading, error: entryError } = useEntryDetail(entryId);
   const [lines, setLines] = useState<LineDraft[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isApproving, setIsApproving] = useState(false);
+  const [isLinesInitialized, setIsLinesInitialized] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const [grnData, entryData] = await Promise.all([getGrn(entryId), getEntry(entryId)]);
-      setGrn(grnData);
-      setEntry(entryData);
-      setLines(
-        grnData.lines.map(line => ({
-          id: line.id,
-          receivedQty: String(line.received_qty),
-          acceptedQty: String(line.accepted_qty),
-          rejectedQty: String(line.rejected_qty),
-          remarks: line.remarks ?? '',
-        })),
-      );
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load the GRN.'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entryId]);
+  const editGrnLinesMutation = useEditGrnLines();
+  const approveGrnMutation = useApproveGrn();
+  const retryGrnPostMutation = useRetryGrnPost();
+  const isSaving = editGrnLinesMutation.isPending;
+  const isApproving = approveGrnMutation.isPending || retryGrnPostMutation.isPending;
+  const isLoading = isGrnLoading || isEntryLoading;
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  // Seed the editable quantity drafts from the fetched GRN once; after a save/approve we
+  // reset the flag so the next server response re-seeds the drafts with the saved values.
+  useEffect(() => {
+    if (!grn || isLinesInitialized) return;
+    setLines(
+      grn.lines.map(line => ({
+        id: line.id,
+        receivedQty: String(line.received_qty),
+        acceptedQty: String(line.accepted_qty),
+        rejectedQty: String(line.rejected_qty),
+        remarks: line.remarks ?? '',
+      })),
+    );
+    setIsLinesInitialized(true);
+  }, [grn, isLinesInitialized]);
+
+  useEffect(() => {
+    const loadError = grnError ?? entryError;
+    if (loadError) setErrorMessage(extractErrorMessage(loadError, 'Could not load the GRN.'));
+  }, [grnError, entryError]);
 
   function updateLine(lineId: number, patch: Partial<LineDraft>) {
     setLines(current => current.map(line => (line.id === lineId ? { ...line, ...patch } : line)));
@@ -232,15 +232,12 @@ export default function GrnDetailScreen({ route, navigation }: Props) {
     }
     if (!hasUnsavedChanges) return;
 
-    setIsSaving(true);
     try {
-      await editGrnLines(entryId, getEditPayload());
+      await editGrnLinesMutation.mutateAsync({ entryId, payload: getEditPayload() });
       setSuccessMessage('Draft saved.');
-      await load();
+      setIsLinesInitialized(false);
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not save the GRN lines.'));
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -251,31 +248,24 @@ export default function GrnDetailScreen({ route, navigation }: Props) {
       setErrorMessage('Enter valid non-negative quantities before approving.');
       return;
     }
-    setIsApproving(true);
     try {
-      if (hasUnsavedChanges) await editGrnLines(entryId, getEditPayload());
-      await approveGrn(entryId);
+      if (hasUnsavedChanges) await editGrnLinesMutation.mutateAsync({ entryId, payload: getEditPayload() });
+      await approveGrnMutation.mutateAsync(entryId);
       setSuccessMessage('GRN approved.');
-      await load();
+      setIsLinesInitialized(false);
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not approve the GRN.'));
-    } finally {
-      setIsApproving(false);
     }
   }
 
   async function handleRetryPost() {
     setErrorMessage(null);
     setSuccessMessage(null);
-    setIsApproving(true);
     try {
-      await retryGrnPost(entryId);
+      await retryGrnPostMutation.mutateAsync(entryId);
       setSuccessMessage('ERP post retried.');
-      await load();
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not retry the ERP post.'));
-    } finally {
-      setIsApproving(false);
     }
   }
 
@@ -284,7 +274,7 @@ export default function GrnDetailScreen({ route, navigation }: Props) {
     return (
       <View style={styles.errorScreen}>
         <ErrorBanner message={errorMessage ?? 'GRN not found.'} />
-        <TouchableOpacity style={styles.retryLoadButton} onPress={load}>
+        <TouchableOpacity style={styles.retryLoadButton} onPress={() => refetchGrn()}>
           <Text style={styles.retryLoadText}>Retry</Text>
         </TouchableOpacity>
       </View>

@@ -1,14 +1,13 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { cancelEntry, gateOutEntry, getEntry } from '../../api/entries';
 import { getApiBaseUrl } from '../../config/env';
 import { getToken } from '../../auth/tokenStorage';
-import { startGrn } from '../../api/grn';
-import { sendToQuality } from '../../api/quality';
+import { useCancelEntry, useEntryDetail, useGateOutEntry } from '../../queries/useEntryQueries';
+import { useStartGrn } from '../../queries/useGrnQueries';
+import { useSendToQuality } from '../../queries/useQualityQueries';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorBanner, FieldLabel, Input, LoadingView } from '../../components/ui';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
@@ -475,38 +474,22 @@ function PassQrSection({ entry }: { entry: PassDetailOut }) {
 export default function EntryDetailScreen({ route, navigation }: Props) {
   const { entryId } = route.params;
   const { user } = useAuth();
-  const [entry, setEntry] = useState<PassDetailOut | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { data: entry, isLoading, error: loadError } = useEntryDetail(entryId);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActing, setIsActing] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      setEntry(await getEntry(entryId));
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load this pass.'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entryId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const gateOutMutation = useGateOutEntry();
+  const cancelMutation = useCancelEntry();
+  const startGrnMutation = useStartGrn();
+  const sendToQualityMutation = useSendToQuality();
 
   async function runAction(action: () => Promise<unknown>): Promise<boolean> {
     setActionError(null);
     setIsActing(true);
     try {
       await action();
-      await load();
       return true;
     } catch (error) {
       setActionError(extractErrorMessage(error, 'That action could not be completed.'));
@@ -517,6 +500,7 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
   }
 
   if (isLoading) return <LoadingView />;
+  const errorMessage = loadError ? extractErrorMessage(loadError, 'Could not load this pass.') : null;
   if (errorMessage || !entry) return <ErrorBanner message={errorMessage ?? 'Pass not found.'} />;
 
   const role = user?.role;
@@ -552,7 +536,7 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
       key: 'quality-send',
       label: 'Send for inspection',
       variant: 'primary',
-      onPress: () => runAction(() => sendToQuality(entry.id)),
+      onPress: () => runAction(() => sendToQualityMutation.mutateAsync(entry.id)),
     });
   }
   if (canEnterQuality) {
@@ -569,7 +553,7 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
       label: 'Start GRN',
       variant: 'primary',
       onPress: async () => {
-        const ok = await runAction(() => startGrn(entry.id));
+        const ok = await runAction(() => startGrnMutation.mutateAsync(entry.id));
         if (ok) navigation.navigate('GrnDetail', { entryId: entry.id });
       },
     });
@@ -587,7 +571,13 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
       key: 'gate-out',
       label: 'Go to gate-out',
       variant: 'primary',
-      onPress: () => runAction(() => gateOutEntry(entry.id, { rejected_material_on_vehicle: needsRejectedConfirm })),
+      onPress: () =>
+        runAction(() =>
+          gateOutMutation.mutateAsync({
+            entryId: entry.id,
+            payload: { rejected_material_on_vehicle: needsRejectedConfirm },
+          }),
+        ),
     });
   }
   if (canCancel && !showCancelForm) {
@@ -640,7 +630,9 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
             disabled={cancelReason.trim().length < 5 || isActing}
             loading={isActing}
             onPress={async () => {
-              const cancelled = await runAction(() => cancelEntry(entry.id, { reason: cancelReason.trim() }));
+              const cancelled = await runAction(() =>
+                cancelMutation.mutateAsync({ entryId: entry.id, payload: { reason: cancelReason.trim() } }),
+              );
               if (cancelled) setShowCancelForm(false);
             }}
           />

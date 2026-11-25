@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { createUser, deleteUser, getUsers, updateUser } from '../api/users'
+import { userKeys } from '../api/queryKeys'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
@@ -96,35 +98,27 @@ export default function UsersPage() {
   const { user: currentUser } = useAuth()
   const { t } = useLanguage()
   const { showToast } = useToast()
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const usersQuery = useQuery({ queryKey: userKeys.list(), queryFn: getUsers })
+  const users = usersQuery.data ?? []
+  const loading = usersQuery.isFetching
   // Holds { detail } (the raw server text or null), translated at render time
   // so an error on screen follows a language switch.
-  const [loadError, setLoadError] = useState(null)
+  const loadError = usersQuery.isError ? { detail: apiErrorDetail(usersQuery.error) } : null
   const [form, setForm] = useState(initialForm)
-  const [submitting, setSubmitting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   // Mobile only: the create form starts collapsed so the user list is visible first.
   const [createOpen, setCreateOpen] = useState(false)
   const confirmTimerRef = useRef(null)
   const pagination = usePagination(users)
 
-  const refresh = async () => {
-    setLoading(true)
-    setLoadError(null)
-    try {
-      const data = await getUsers()
-      setUsers(data)
-    } catch (err) {
-      setLoadError({ detail: apiErrorDetail(err) })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const refresh = () => usersQuery.refetch()
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: userKeys.list() })
 
-  useEffect(() => {
-    refresh()
-  }, [])
+  const createMutation = useMutation({ mutationFn: createUser })
+  const updateMutation = useMutation({ mutationFn: ({ id, updates }) => updateUser(id, updates) })
+  const deleteMutation = useMutation({ mutationFn: deleteUser })
+  const submitting = createMutation.isPending
 
   // Clear a pending confirm timer so it cannot set state after the page unmounts.
   useEffect(() => () => clearTimeout(confirmTimerRef.current), [])
@@ -136,25 +130,22 @@ export default function UsersPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setSubmitting(true)
     try {
-      await createUser(form)
+      await createMutation.mutateAsync(form)
       setForm(initialForm)
       setCreateOpen(false)
-      await refresh()
+      invalidate()
       showToast(t('usersToastCreated'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'usersErrorCreate'), 'error')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   const handleToggleActive = async (targetUser) => {
     try {
-      await updateUser(targetUser.id, { is_active: !targetUser.is_active })
-      await refresh()
+      await updateMutation.mutateAsync({ id: targetUser.id, updates: { is_active: !targetUser.is_active } })
+      invalidate()
       showToast(t(targetUser.is_active ? 'usersToastDeactivated' : 'usersToastActivated'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
@@ -164,8 +155,8 @@ export default function UsersPage() {
 
   const handleRoleChange = async (targetUser, role) => {
     try {
-      await updateUser(targetUser.id, { role })
-      await refresh()
+      await updateMutation.mutateAsync({ id: targetUser.id, updates: { role } })
+      invalidate()
       showToast(t('usersToastRoleUpdated'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.
@@ -192,8 +183,8 @@ export default function UsersPage() {
 
   const handleDelete = async (targetUser) => {
     try {
-      await deleteUser(targetUser.id)
-      await refresh()
+      await deleteMutation.mutateAsync(targetUser.id)
+      invalidate()
       showToast(t('usersToastDeleted'), 'success')
     } catch (err) {
       // The session-expired toast already explains this failure.

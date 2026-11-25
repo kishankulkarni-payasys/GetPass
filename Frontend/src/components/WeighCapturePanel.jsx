@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { captureWeighment } from '../api/weighments'
+import { entryKeys } from '../api/queryKeys'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { INDICATOR_STATUS } from '../hooks/useIndicatorReading'
@@ -90,23 +92,27 @@ export default function WeighCapturePanel({ pass, indicator, onCaptured }) {
   const [draft, setDraft] = useState({ kind: allowedKinds[0] ?? WEIGHMENT_KINDS.gross, weight: '', unit: 'kg', reason: '', supersedeReason: '' })
   const [supersedeFor, setSupersedeFor] = useState(null)
   const [indicatorSupersedeReason, setIndicatorSupersedeReason] = useState('')
-  const [saving, setSaving] = useState(false)
   const hasCurrent = (kind) => Boolean(currentWeighment(pass.weighments ?? [], kind))
   const showManual = manualOpen || indicator.status === INDICATOR_STATUS.unavailable
+  const queryClient = useQueryClient()
+  const captureMutation = useMutation({
+    mutationFn: (body) => captureWeighment(pass.id, body),
+  })
+  const saving = captureMutation.isPending
 
   const submit = async (body, successKey) => {
-    setSaving(true)
     try {
-      const row = await captureWeighment(pass.id, body)
+      const row = await captureMutation.mutateAsync(body)
       showToast(t(successKey), 'success')
       setSupersedeFor(null)
       setIndicatorSupersedeReason('')
       setDraft((prev) => ({ ...prev, weight: '', reason: '', supersedeReason: '' }))
+      // The pass detail screen and the weighbridge list both read this pass's
+      // weighments; refetch them so the new capture shows up everywhere.
+      queryClient.invalidateQueries({ queryKey: entryKeys.detail(pass.id) })
       onCaptured(row)
     } catch (err) {
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'weighToastFailed'), 'error')
-    } finally {
-      setSaving(false)
     }
   }
 

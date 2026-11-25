@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { searchPoBySupplier } from '../api/gateIn'
 import { useLanguage } from '../context/LanguageContext'
 import { PO_CHECK } from '../hooks/useGateInChecks'
@@ -37,17 +38,15 @@ function SupplierSearch({ onPick }) {
   const { t } = useLanguage()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
-  const [searching, setSearching] = useState(false)
+  const searchMutation = useMutation({ mutationFn: searchPoBySupplier })
+  const searching = searchMutation.isPending
   const canSearch = query.trim().length >= MIN_SUPPLIER_SEARCH_LENGTH && !searching
 
   const handleSearch = async () => {
-    setSearching(true)
     try {
-      setResults(await searchPoBySupplier(query.trim()))
+      setResults(await searchMutation.mutateAsync(query.trim()))
     } catch {
       setResults([])
-    } finally {
-      setSearching(false)
     }
   }
 

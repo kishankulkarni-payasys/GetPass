@@ -1,4 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { entryKeys } from '../api/queryKeys'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { usePoCheck, useOpenPassWarning } from '../hooks/useGateInChecks'
@@ -76,11 +78,16 @@ function QrPrefill({ onValues }) {
 export default function InwardPassForm({ config, online, onCreated }) {
   const { t } = useLanguage()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const form = useInwardPassForm({ threshold: config.ocr_confidence_threshold, maxLines: config.max_challan_lines })
   const [photos, setPhotos] = useState({})
   const [clientRef, setClientRef] = useState(newClientRef)
   const [resetKey, setResetKey] = useState(0)
-  const [submitting, setSubmitting] = useState(false)
+  // submitGateInPass (src/offline/submitGateInPass.js) is the mutation body: it
+  // creates the pass online, or queues it (and its photos) in the offline
+  // IndexedDB queue when there is no network, so the capture is never lost.
+  const submitMutation = useMutation({ mutationFn: submitGateInPass })
+  const submitting = submitMutation.isPending
   const { fields } = form.state
   const poCheck = usePoCheck(fields[OCR_FIELDS.poNumber].value, { online })
   const openPass = useOpenPassWarning(fields[OCR_FIELDS.vehicleNumber].value, { online })
@@ -106,17 +113,17 @@ export default function InwardPassForm({ config, online, onCreated }) {
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (!form.canSubmit || submitting) return
-    setSubmitting(true)
     try {
-      const result = await submitGateInPass({ payload: form.buildPayload(clientRef), photos, online })
+      const result = await submitMutation.mutateAsync({ payload: form.buildPayload(clientRef), photos, online })
       const toast = OUTCOME_TOASTS[result.outcome]
       showToast(t(toast.key), toast.type)
+      // Queued passes have no server row yet; the offline queue's own sync
+      // invalidates this once they are actually sent (see api/queryClient.js).
+      if (result.outcome !== SUBMIT_OUTCOMES.queued) queryClient.invalidateQueries({ queryKey: entryKeys.all })
       onCreated(result)
       resetAll()
     } catch (err) {
       if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'gateInToastFailed'), 'error')
-    } finally {
-      setSubmitting(false)
     }
   }
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -9,18 +9,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../navigation/TabNavigator';
-import { getDashboardSummary } from '../api/dashboard';
-import { DashboardRow, DashboardSummary, Tone } from '../types/dashboard';
+import { useDashboardSummary } from '../queries/useDashboardQueries';
+import { DashboardRow, Tone } from '../types/dashboard';
 import { EmptyState, ErrorBanner, Input, LoadingView } from '../components/ui';
 import { extractErrorMessage } from '../utils/apiError';
 import { formatPlate } from '../utils/formatPlate';
 
 type Props = MainTabScreenProps<'DashboardTab'>;
-
-const POLL_INTERVAL_MS = 30_000;
 
 const TONE_STYLES: Record<Tone, { backgroundColor: string; color: string }> = {
   good: { backgroundColor: '#e8f5ed', color: '#276749' },
@@ -206,52 +204,26 @@ function BoardCard({
 export default function DashboardScreen({ navigation }: Props) {
   const [day, setDay] = useState(localToday);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const latestRequest = useRef(0);
+  const isFocused = useIsFocused();
 
-  const load = useCallback(async (isRefresh = false) => {
-    const requestId = ++latestRequest.current;
-    if (isRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await getDashboardSummary(day);
-      if (requestId !== latestRequest.current) return;
-      setSummary(data);
-      setUpdatedAt(new Date());
-    } catch (error) {
-      if (requestId === latestRequest.current) {
-        setErrorMessage(extractErrorMessage(error, 'Could not load the dashboard.'));
-      }
-    } finally {
-      if (requestId === latestRequest.current) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
-    }
-  }, [day]);
+  const {
+    data: summary,
+    isLoading,
+    isRefetching: isRefreshing,
+    error,
+    dataUpdatedAt,
+    refetch,
+  } = useDashboardSummary(day, isFocused);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-      const timer = setInterval(() => load(true), POLL_INTERVAL_MS);
-      return () => {
-        clearInterval(timer);
-        latestRequest.current += 1;
-      };
-    }, [load]),
-  );
+  const errorMessage = error ? extractErrorMessage(error, 'Could not load the dashboard.') : null;
+  const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   if (isLoading) return <LoadingView />;
   if (!summary) {
     return (
       <View style={styles.loadError}>
         <ErrorBanner message={errorMessage ?? 'No dashboard data.'} />
-        <TouchableOpacity style={styles.refreshButton} onPress={() => load()}>
+        <TouchableOpacity style={styles.refreshButton} onPress={() => refetch()}>
           <Text style={styles.refreshButtonText}>Try again</Text>
         </TouchableOpacity>
       </View>
@@ -266,7 +238,7 @@ export default function DashboardScreen({ navigation }: Props) {
         style={styles.flexOne}
         data={summary.board}
         keyExtractor={item => String(item.id)}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
@@ -280,7 +252,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 <TouchableOpacity
                   accessibilityRole="button"
                   style={[styles.refreshButton, isRefreshing && styles.refreshButtonDisabled]}
-                  onPress={() => load(true)}
+                  onPress={() => refetch()}
                   disabled={isRefreshing}
                 >
                   <Text style={styles.refreshButtonText}>{isRefreshing ? 'Refreshing' : 'Refresh'}</Text>

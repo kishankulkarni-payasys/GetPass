@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -12,11 +12,11 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { gateOutEntry, getEntry, listEntries } from '../../api/entries';
+import { getEntry } from '../../api/entries';
+import { useEntryList, useGateOutEntry } from '../../queries/useEntryQueries';
 import { PassState, PassType, VehicleEntryOut } from '../../types/entries';
 import { EmptyState, ErrorBanner, Input, LoadingView } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
@@ -374,7 +374,6 @@ function GateOutCard({
 
 export default function EntryListScreen({ route, navigation }: Props) {
   const mode = route.params?.mode ?? 'open';
-  const [entries, setEntries] = useState<VehicleEntryOut[]>([]);
   const [search, setSearch] = useState('');
   const [passTypeFilter, setPassTypeFilter] = useState<PassType | ''>('');
   const [stateFilter, setStateFilter] = useState<PassState | ''>('');
@@ -382,31 +381,21 @@ export default function EntryListScreen({ route, navigation }: Props) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [dateFiltersOpen, setDateFiltersOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [actingEntryId, setActingEntryId] = useState<number | null>(null);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await listEntries({});
-      setEntries(mode === 'open' ? data.filter(entry => OPEN_STATES.has(entry.pass_state)) : data);
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load passes.'));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [mode]);
+  const {
+    data: fetchedEntries,
+    isLoading,
+    isRefetching: isRefreshing,
+    error: loadError,
+    refetch,
+  } = useEntryList();
+  const gateOutMutation = useGateOutEntry();
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const allEntries = fetchedEntries ?? [];
+  const entries = mode === 'open' ? allEntries.filter(entry => OPEN_STATES.has(entry.pass_state)) : allEntries;
+  const errorMessage = actionError ?? (loadError ? extractErrorMessage(loadError, 'Could not load passes.') : null);
 
   const states = mode === 'open' ? [...OPEN_STATES] : ALL_STATES;
   const visibleEntries = entries.filter(entry => {
@@ -436,13 +425,15 @@ export default function EntryListScreen({ route, navigation }: Props) {
 
   async function submitGateOut(entry: VehicleEntryOut, rejectedMaterialOnVehicle: boolean) {
     setActingEntryId(entry.id);
-    setErrorMessage(null);
+    setActionError(null);
     try {
-      await gateOutEntry(entry.id, { rejected_material_on_vehicle: rejectedMaterialOnVehicle });
-      await load(true);
+      await gateOutMutation.mutateAsync({
+        entryId: entry.id,
+        payload: { rejected_material_on_vehicle: rejectedMaterialOnVehicle },
+      });
       Alert.alert('Gate-out complete', `${entry.vehicle_number} has been let out.`);
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Failed to let the vehicle out.'));
+      setActionError(extractErrorMessage(error, 'Failed to let the vehicle out.'));
     } finally {
       setActingEntryId(null);
     }
@@ -450,8 +441,10 @@ export default function EntryListScreen({ route, navigation }: Props) {
 
   async function confirmGateOut(entry: VehicleEntryOut) {
     setActingEntryId(entry.id);
-    setErrorMessage(null);
+    setActionError(null);
     try {
+      // One-off imperative check (not a render-driven read), so it stays a direct API
+      // call rather than a cached query.
       const detail = entry.pass_type === 'inward' ? await getEntry(entry.id) : null;
       const rejectedQuantity = detail?.grn?.total_rejected_qty ?? 0;
       const hasRejectedMaterial = rejectedQuantity > 0;
@@ -469,7 +462,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
         ],
       );
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load pass details.'));
+      setActionError(extractErrorMessage(error, 'Could not load pass details.'));
     } finally {
       setActingEntryId(null);
     }
@@ -495,7 +488,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
         keyExtractor={item => String(item.id)}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
         ListHeaderComponent={
           <View>
             {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
@@ -563,7 +556,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
       keyExtractor={item => String(item.id)}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={styles.listContent}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
       ListHeaderComponent={
         <View>
           <View style={styles.searchCard}>
@@ -581,7 +574,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
                 <Text style={styles.actionIcon}>{'☷'}</Text>
                 <Text style={styles.actionButtonText}>Filters</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} onPress={() => load(true)} disabled={isRefreshing}>
+              <TouchableOpacity style={styles.actionButton} onPress={() => refetch()} disabled={isRefreshing}>
                 <Text style={styles.actionIcon}>{'↻'}</Text>
                 <Text style={styles.actionButtonText}>{isRefreshing ? 'Refreshing' : 'Refresh'}</Text>
               </TouchableOpacity>

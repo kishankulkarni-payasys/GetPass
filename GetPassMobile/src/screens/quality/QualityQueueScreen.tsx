@@ -1,9 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getQualityQueue } from '../../api/quality';
+import { useQualityQueue } from '../../queries/useQualityQueries';
 import { ErrorBanner, LoadingView } from '../../components/ui';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import type { QualityQueueItem } from '../../types/quality';
@@ -111,30 +110,9 @@ function QualityCard({
 }
 
 export default function QualityQueueScreen({ navigation }: Props) {
-  const [items, setItems] = useState<QualityQueueItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      setItems(await getQualityQueue());
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load the quality queue.'));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const { data: fetchedItems, isLoading, isRefetching: isRefreshing, error, refetch } = useQualityQueue();
+  const items = fetchedItems ?? [];
+  const errorMessage = error ? extractErrorMessage(error, 'Could not load the quality queue.') : null;
 
   if (isLoading) return <LoadingView />;
 
@@ -152,7 +130,7 @@ export default function QualityQueueScreen({ navigation }: Props) {
       data={pendingItems}
       keyExtractor={item => String(item.id)}
       contentContainerStyle={styles.list}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
       ListHeaderComponent={
         <View>
           {errorMessage ? <ErrorBanner message={errorMessage} /> : null}

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { getDashboardSummary } from '../api/dashboard'
+import { dashboardKeys } from '../api/queryKeys'
 import PageHeading from '../components/PageHeading'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
@@ -37,49 +39,32 @@ function formatClock(date, locale) {
 }
 
 // Polls every 30 s while the tab is visible and reloads at once when it
-// becomes visible again. An answer for an older day is ignored.
+// becomes visible again. Keyed by day, so switching the date shows that
+// day's loading/empty state instead of the previous day's board.
 function useDashboardSummary(day) {
-  const [summary, setSummary] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [errorDetail, setErrorDetail] = useState(undefined)
   const [updatedAt, setUpdatedAt] = useState(null)
-  const latestRequestRef = useRef(0)
-
-  const refresh = useCallback(async () => {
-    const requestId = ++latestRequestRef.current
-    setLoading(true)
-    try {
-      const data = await getDashboardSummary(day)
-      if (requestId !== latestRequestRef.current) return
-      setSummary(data)
-      setErrorDetail(undefined)
-      setUpdatedAt(new Date())
-    } catch (err) {
-      if (requestId === latestRequestRef.current) setErrorDetail(apiErrorDetail(err))
-    } finally {
-      if (requestId === latestRequestRef.current) setLoading(false)
-    }
-  }, [day])
+  const query = useQuery({
+    queryKey: dashboardKeys.summary(day),
+    queryFn: () => getDashboardSummary(day),
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  })
 
   useEffect(() => {
-    setSummary(null)
-    refresh()
-    const timer = setInterval(() => {
-      if (!document.hidden) refresh()
-    }, POLL_INTERVAL_MS)
-    const handleVisibility = () => {
-      if (!document.hidden) refresh()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => {
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
-  }, [refresh])
+    if (query.dataUpdatedAt) setUpdatedAt(new Date(query.dataUpdatedAt))
+  }, [query.dataUpdatedAt])
 
   // undefined = no error; null = failed without a server message.
-  const hasError = errorDetail !== undefined
-  return { summary, loading, hasError, errorDetail, updatedAt, refresh }
+  const errorDetail = query.isError ? apiErrorDetail(query.error) : undefined
+  return {
+    summary: query.data ?? null,
+    loading: query.isFetching,
+    hasError: query.isError,
+    errorDetail,
+    updatedAt,
+    refresh: query.refetch,
+  }
 }
 
 function KpiTile({ value, label, note, alert = false }) {

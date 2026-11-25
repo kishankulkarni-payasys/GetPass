@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { GRN_WORK_GROUPS, retryGrnPost, sendToQuality, startGrn } from '../api/grn'
+import { grnKeys } from '../api/queryKeys'
 import GrnEditor from '../components/GrnEditor'
 import Button from '../components/ui/Button'
 import ListState from '../components/ui/ListState'
@@ -102,10 +104,14 @@ const ACTION_CALLS = {
   retry: { call: retryGrnPost, successKey: null },
 }
 
-function useWorkActions({ refresh, openPass }) {
+function useWorkActions({ openPass }) {
   const { t } = useLanguage()
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const [busyId, setBusyId] = useState(null)
+  const mutation = useMutation({
+    mutationFn: ({ type, item }) => ACTION_CALLS[type].call(item.entry_id),
+  })
 
   return {
     busyId,
@@ -114,16 +120,18 @@ function useWorkActions({ refresh, openPass }) {
         openPass(item.entry_id)
         return
       }
-      const { call, successKey, opensEditor } = ACTION_CALLS[type]
+      const { successKey, opensEditor } = ACTION_CALLS[type]
       setBusyId(item.entry_id)
       try {
-        await call(item.entry_id)
+        await mutation.mutateAsync({ type, item })
         if (successKey) showToast(t(successKey), 'success')
+        // Sending to quality, starting the draft or retrying the ERP post all
+        // move the item between work groups, so the list must reload either way.
+        queryClient.invalidateQueries({ queryKey: grnKeys.list() })
         if (opensEditor) openPass(item.entry_id)
-        else refresh()
       } catch (err) {
         if (!err.isSessionExpired) showToast(apiErrorMessage(err, t, 'grnToastFailed'), 'error')
-        refresh()
+        queryClient.invalidateQueries({ queryKey: grnKeys.list() })
       } finally {
         setBusyId(null)
       }
@@ -134,7 +142,7 @@ function useWorkActions({ refresh, openPass }) {
 function WorkList({ onOpenPass }) {
   const { t } = useLanguage()
   const { items, loading, failed, errorDetail, refresh } = useStoreWorkList()
-  const { busyId, onAction } = useWorkActions({ refresh, openPass: onOpenPass })
+  const { busyId, onAction } = useWorkActions({ openPass: onOpenPass })
   return (
     <>
       <div className="mb-3 flex justify-end">

@@ -1,10 +1,9 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/TabNavigator';
-import { listStoreWork, retryGrnPost, startGrn } from '../../api/grn';
-import { sendToQuality } from '../../api/quality';
+import { useGrnWorkList, useRetryGrnPost, useStartGrn } from '../../queries/useGrnQueries';
+import { useSendToQuality } from '../../queries/useQualityQueries';
 import { GrnWorkGroup, GrnWorkItem } from '../../types/grn';
 import { EmptyState, ErrorBanner, LoadingView } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
@@ -164,31 +163,22 @@ function WorkCard({
 }
 
 export default function GrnListScreen({ navigation }: Props) {
-  const [items, setItems] = useState<GrnWorkItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const {
+    data: fetchedItems,
+    isLoading,
+    isRefetching: isRefreshing,
+    error: loadError,
+    refetch,
+  } = useGrnWorkList();
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      setItems(await listStoreWork());
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load the store work list.'));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+  const items = useMemo(() => fetchedItems ?? [], [fetchedItems]);
+  const errorMessage = actionError ?? (loadError ? extractErrorMessage(loadError, 'Could not load the store work list.') : null);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const startGrnMutation = useStartGrn();
+  const sendToQualityMutation = useSendToQuality();
+  const retryGrnPostMutation = useRetryGrnPost();
 
   const rows = useMemo<ListRow[]>(() => {
     const result: ListRow[] = [];
@@ -215,16 +205,14 @@ export default function GrnListScreen({ navigation }: Props) {
 
   async function runAction(item: GrnWorkItem, action: () => Promise<unknown>, openEditor = false) {
     setBusyId(item.entry_id);
-    setErrorMessage(null);
+    setActionError(null);
     try {
       await action();
       if (openEditor) {
         navigation.navigate('GrnDetail', { entryId: item.entry_id });
-      } else {
-        await load(true);
       }
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'The action could not be completed.'));
+      setActionError(extractErrorMessage(error, 'The action could not be completed.'));
     } finally {
       setBusyId(null);
     }
@@ -239,14 +227,14 @@ export default function GrnListScreen({ navigation }: Props) {
       data={rows}
       keyExtractor={row => row.key}
       contentContainerStyle={styles.list}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
       ListHeaderComponent={
         <View style={styles.listHeader}>
           {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
           <TouchableOpacity
             accessibilityRole="button"
             style={[styles.refreshButton, isRefreshing && styles.disabled]}
-            onPress={() => load(true)}
+            onPress={() => refetch()}
             disabled={isRefreshing}
           >
             <Text style={styles.refreshText}>{isRefreshing ? 'Refreshing' : 'Refresh'}</Text>
@@ -275,9 +263,9 @@ export default function GrnListScreen({ navigation }: Props) {
             item={item}
             busy={busy}
             onOpen={() => navigation.navigate('GrnDetail', { entryId: item.entry_id })}
-            onSendToInspection={() => runAction(item, () => sendToQuality(item.entry_id))}
-            onStartGrn={() => runAction(item, () => startGrn(item.entry_id), true)}
-            onRetryPost={() => runAction(item, () => retryGrnPost(item.entry_id))}
+            onSendToInspection={() => runAction(item, () => sendToQualityMutation.mutateAsync(item.entry_id))}
+            onStartGrn={() => runAction(item, () => startGrnMutation.mutateAsync(item.entry_id), true)}
+            onRetryPost={() => runAction(item, () => retryGrnPostMutation.mutateAsync(item.entry_id))}
           />
         );
       }}

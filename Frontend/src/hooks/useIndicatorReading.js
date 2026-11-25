@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getIndicatorReading } from '../api/weighments'
+import { weighmentKeys } from '../api/queryKeys'
 import { apiErrorDetail } from '../i18n/apiErrors'
 
 // Often enough to see the weight settle, light enough for a site network.
@@ -12,41 +13,31 @@ export const INDICATOR_STATUS = {
   failed: 'failed',
 }
 
+function statusFor(query) {
+  if (query.isPending) return INDICATOR_STATUS.loading
+  if (query.isError) return INDICATOR_STATUS.failed
+  // No indicator configured: manual entry only (still polling costs nothing,
+  // but the status tells the panel to stay in manual mode).
+  if (query.data && !query.data.available) return INDICATOR_STATUS.unavailable
+  return INDICATOR_STATUS.live
+}
+
 // Polls the live indicator while the sheet is open and the tab is visible.
 // Returns { status, reading, errorDetail }.
 export function useIndicatorReading(enabled) {
-  const [state, setState] = useState({ status: INDICATOR_STATUS.loading, reading: null, errorDetail: null })
+  const query = useQuery({
+    queryKey: weighmentKeys.indicatorReading(),
+    queryFn: getIndicatorReading,
+    enabled,
+    refetchInterval: POLL_INTERVAL_MS,
+    // Matches the old poll loop, which only ran while the tab was visible.
+    refetchIntervalInBackground: false,
+    retry: false,
+  })
 
-  useEffect(() => {
-    if (!enabled) return undefined
-    let active = true
-    let timer = null
-
-    const poll = async () => {
-      if (document.visibilityState === 'visible') {
-        try {
-          const reading = await getIndicatorReading()
-          if (!active) return
-          // No indicator configured: stop polling, manual entry only.
-          if (!reading.available) {
-            setState({ status: INDICATOR_STATUS.unavailable, reading: null, errorDetail: null })
-            return
-          }
-          setState({ status: INDICATOR_STATUS.live, reading, errorDetail: null })
-        } catch (err) {
-          if (!active) return
-          setState((prev) => ({ ...prev, status: INDICATOR_STATUS.failed, errorDetail: apiErrorDetail(err) }))
-        }
-      }
-      if (active) timer = setTimeout(poll, POLL_INTERVAL_MS)
-    }
-
-    poll()
-    return () => {
-      active = false
-      clearTimeout(timer)
-    }
-  }, [enabled])
-
-  return state
+  return {
+    status: statusFor(query),
+    reading: query.data?.available ? query.data : null,
+    errorDetail: query.isError ? apiErrorDetail(query.error) : null,
+  }
 }

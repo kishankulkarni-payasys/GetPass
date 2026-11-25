@@ -1,12 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { getEntry } from '../../api/entries';
-import { putQualityResult } from '../../api/quality';
-import { PassDetailOut } from '../../types/entries';
+import { useEntryDetail } from '../../queries/useEntryQueries';
+import { usePutQualityResult } from '../../queries/useQualityQueries';
 import { Button, Card, ErrorBanner, FieldLabel, Input, LoadingView, colors } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 
@@ -24,44 +22,38 @@ interface LineDraft {
 
 export default function QualityResultScreen({ route, navigation }: Props) {
   const { entryId } = route.params;
-  const [entry, setEntry] = useState<PassDetailOut | null>(null);
+  const { data: entry, isLoading, error: loadError } = useEntryDetail(entryId);
   const [lines, setLines] = useState<LineDraft[]>([]);
   const [resultRemarks, setResultRemarks] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await getEntry(entryId);
-      setEntry(data);
-      const savedLines = new Map((data.quality?.lines ?? []).map(line => [line.challan_line_id, line]));
-      setLines(
-        data.challan_lines.map(line => ({
-          challanLineId: line.id,
-          material: line.material,
-          uom: line.uom,
-          challanQty: line.quantity,
-          acceptedQty: String(savedLines.get(line.id)?.accepted_qty ?? line.quantity),
-          rejectedQty: String(savedLines.get(line.id)?.rejected_qty ?? 0),
-          remarks: savedLines.get(line.id)?.remarks ?? '',
-        })),
-      );
-      setResultRemarks(data.quality?.remarks ?? '');
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load this pass.'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entryId]);
+  const putQualityResultMutation = usePutQualityResult();
+  const isSubmitting = putQualityResultMutation.isPending;
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  // Seed the editable draft from the fetched pass once per screen visit, same as the old
+  // one-shot `load()`: later background refetches of this query must not clobber in-progress edits.
+  useEffect(() => {
+    if (!entry || isInitialized) return;
+    const savedLines = new Map((entry.quality?.lines ?? []).map(line => [line.challan_line_id, line]));
+    setLines(
+      entry.challan_lines.map(line => ({
+        challanLineId: line.id,
+        material: line.material,
+        uom: line.uom,
+        challanQty: line.quantity,
+        acceptedQty: String(savedLines.get(line.id)?.accepted_qty ?? line.quantity),
+        rejectedQty: String(savedLines.get(line.id)?.rejected_qty ?? 0),
+        remarks: savedLines.get(line.id)?.remarks ?? '',
+      })),
+    );
+    setResultRemarks(entry.quality?.remarks ?? '');
+    setIsInitialized(true);
+  }, [entry, isInitialized]);
+
+  useEffect(() => {
+    if (loadError) setErrorMessage(extractErrorMessage(loadError, 'Could not load this pass.'));
+  }, [loadError]);
 
   function updateLine(index: number, patch: Partial<LineDraft>) {
     setLines(current => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
@@ -79,22 +71,22 @@ export default function QualityResultScreen({ route, navigation }: Props) {
 
   async function handleSubmit() {
     setErrorMessage(null);
-    setIsSubmitting(true);
     try {
-      await putQualityResult(entryId, {
-        lines: lines.map(line => ({
-          challan_line_id: line.challanLineId,
-          accepted_qty: Number(line.acceptedQty),
-          rejected_qty: Number(line.rejectedQty),
-          remarks: line.remarks.trim() || undefined,
-        })),
-        remarks: resultRemarks.trim() || undefined,
+      await putQualityResultMutation.mutateAsync({
+        entryId,
+        payload: {
+          lines: lines.map(line => ({
+            challan_line_id: line.challanLineId,
+            accepted_qty: Number(line.acceptedQty),
+            rejected_qty: Number(line.rejectedQty),
+            remarks: line.remarks.trim() || undefined,
+          })),
+          remarks: resultRemarks.trim() || undefined,
+        },
       });
       navigation.goBack();
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not save the quality result.'));
-    } finally {
-      setIsSubmitting(false);
     }
   }
 

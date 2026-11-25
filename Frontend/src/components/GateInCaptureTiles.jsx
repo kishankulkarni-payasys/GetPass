@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { OCR_DOC_TYPES, readDocument } from '../api/gateIn'
 import { useLanguage } from '../context/LanguageContext'
 import useObjectUrl from '../hooks/useObjectUrl'
@@ -59,13 +60,16 @@ function CaptureTile({ tile, file, ocrActive, disabled, onPhoto, onOcrResult }) 
   const [status, setStatus] = useState(READ_STATUS.idle)
   const [confidence, setConfidence] = useState(null)
   const [errorDetail, setErrorDetail] = useState(null)
+  const readMutation = useMutation({
+    mutationFn: ({ image, docType }) => readDocument(image, docType),
+  })
 
   const handleFile = async (selected) => {
     onPhoto(tile.kind, selected)
     if (!ocrActive) return
     setStatus(READ_STATUS.reading)
     try {
-      const result = await readDocument(selected, tile.docType)
+      const result = await readMutation.mutateAsync({ image: selected, docType: tile.docType })
       setConfidence(result.confidence ?? null)
       setStatus(READ_STATUS.read)
       onOcrResult(tile.docType, result)

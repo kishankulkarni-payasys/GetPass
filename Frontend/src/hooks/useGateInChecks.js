@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getEntries } from '../api/entries'
 import { getGateInConfig, lookupPo } from '../api/gateIn'
+import { gateInKeys } from '../api/queryKeys'
 import { PASS_STATES } from '../utils/passStates'
 import { normalizePlate } from '../utils/plate'
 
@@ -27,44 +29,32 @@ export const PO_CHECK = {
 }
 
 export function useGateInConfig() {
-  const [config, setConfig] = useState(FALLBACK_GATE_IN_CONFIG)
-  useEffect(() => {
-    let active = true
-    getGateInConfig()
-      .then((data) => active && setConfig(data))
-      .catch(() => active && setConfig(FALLBACK_GATE_IN_CONFIG))
-    return () => {
-      active = false
-    }
-  }, [])
-  return config
+  const query = useQuery({
+    queryKey: gateInKeys.config(),
+    queryFn: getGateInConfig,
+    // Offline (or before the first answer) the form still works with the spec
+    // defaults, so a failed/slow config fetch never blocks gate-in.
+    placeholderData: FALLBACK_GATE_IN_CONFIG,
+    retry: false,
+  })
+  return query.data ?? FALLBACK_GATE_IN_CONFIG
 }
 
-// Runs `check` after the value has been still for a moment and ignores stale
-// answers. Returns { data, settled }: `settled` is false while the newest
-// value is still being checked.
-function useDebouncedCheck(value, enabled, check) {
-  const [result, setResult] = useState({ value: null, data: null })
+// Debounces `value` and only then lets the query for it run, so typing
+// "MH12AB1234" fires one request, not ten; React Query caches each settled
+// value so re-typing the same plate/PO does not refetch it.
+function useDebouncedValue(value, delayMs) {
+  const [debounced, setDebounced] = useState(value)
   useEffect(() => {
-    if (!enabled) return undefined
-    let active = true
-    const timer = setTimeout(async () => {
-      const data = await check(value)
-      if (active) setResult({ value, data })
-    }, CHECK_DEBOUNCE_MS)
-    return () => {
-      active = false
-      clearTimeout(timer)
-    }
-  }, [value, enabled, check])
-  const settled = result.value === value
-  return { data: settled ? result.data : null, settled }
+    const timer = setTimeout(() => setDebounced(value), delayMs)
+    return () => clearTimeout(timer)
+  }, [value, delayMs])
+  return debounced
 }
 
 async function checkPo(poNumber) {
   try {
-    const { status, po } = await lookupPo(poNumber)
-    return { status, po }
+    return await lookupPo(poNumber)
   } catch {
     // Warn-only check (B3): a failed lookup never blocks the pass.
     return { status: PO_CHECK.notChecked, po: null }
@@ -74,10 +64,19 @@ async function checkPo(poNumber) {
 // PO cross-check result for the typed PO number: { status, po }. Offline: not_checked.
 export function usePoCheck(poNumber, { online }) {
   const trimmed = poNumber.trim()
-  const { data, settled } = useDebouncedCheck(trimmed, Boolean(trimmed) && online, checkPo)
+  const debounced = useDebouncedValue(trimmed, CHECK_DEBOUNCE_MS)
+  const enabled = Boolean(debounced) && online
+  const query = useQuery({
+    queryKey: gateInKeys.poLookup(debounced),
+    queryFn: () => checkPo(debounced),
+    enabled,
+    retry: false,
+  })
+
   if (!trimmed) return { status: PO_CHECK.idle, po: null }
   if (!online) return { status: PO_CHECK.notChecked, po: null }
-  return settled ? data : { status: PO_CHECK.checking, po: null }
+  if (debounced !== trimmed || query.isPending) return { status: PO_CHECK.checking, po: null }
+  return query.data ?? { status: PO_CHECK.checking, po: null }
 }
 
 async function findOpenPass(plate) {
@@ -92,7 +91,15 @@ async function findOpenPass(plate) {
 // An open pass for the same plate is only a warning (B15).
 export function useOpenPassWarning(vehicleNumber, { online }) {
   const plate = normalizePlate(vehicleNumber)
-  const enabled = online && plate.length >= MIN_PLATE_LENGTH_FOR_CHECK
-  const { data } = useDebouncedCheck(plate, enabled, findOpenPass)
-  return enabled ? data : null
+  const debounced = useDebouncedValue(plate, CHECK_DEBOUNCE_MS)
+  const enabled = online && debounced.length >= MIN_PLATE_LENGTH_FOR_CHECK
+  const query = useQuery({
+    queryKey: gateInKeys.openPass(debounced),
+    queryFn: () => findOpenPass(debounced),
+    enabled,
+    retry: false,
+  })
+
+  if (!enabled || debounced !== plate) return null
+  return query.data ?? null
 }

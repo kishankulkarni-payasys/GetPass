@@ -1,9 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { listEntries } from '../../api/entries';
+import { useEntryList } from '../../queries/useEntryQueries';
 import { ErrorBanner, LoadingView } from '../../components/ui';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import type { VehicleEntryOut, WeighmentKind } from '../../types/entries';
@@ -83,32 +82,11 @@ function WeightLines({ entry }: { entry: VehicleEntryOut }) {
 }
 
 export default function WeighbridgeScreen({ navigation }: Props) {
-  const [entries, setEntries] = useState<VehicleEntryOut[]>([]);
   const [scope, setScope] = useState<ListScope>('onSite');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { data: fetchedEntries, isLoading, isRefetching: isRefreshing, error, refetch } = useEntryList();
+  const errorMessage = error ? extractErrorMessage(error, 'Could not load vehicles.') : null;
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      setEntries(await listEntries({}));
-    } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not load vehicles.'));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
-
+  const entries = useMemo(() => fetchedEntries ?? [], [fetchedEntries]);
   const onSiteEntries = useMemo(
     () => entries.filter(entry => OPEN_STATES.has(entry.pass_state)),
     [entries],
@@ -130,7 +108,7 @@ export default function WeighbridgeScreen({ navigation }: Props) {
       data={visibleEntries}
       keyExtractor={item => String(item.id)}
       contentContainerStyle={styles.listContent}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
       ListHeaderComponent={
         <View>
           {errorMessage ? <ErrorBanner message={errorMessage} /> : null}

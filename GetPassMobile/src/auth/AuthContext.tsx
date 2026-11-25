@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { login as loginRequest, logout as logoutRequest } from '../api/auth';
 import { setUnauthorizedHandler } from '../api/client';
+import { queryClient } from '../api/queryClient';
 import { clearToken, getStoredUser, getToken, saveStoredUser, saveToken } from './tokenStorage';
 import { AuthUser } from '../types/auth';
 
@@ -33,7 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null));
+    setUnauthorizedHandler(() => {
+      // Drop any cached query data along with the session: the next sign-in (possibly as
+      // a different user) must not see a previous user's cached responses.
+      queryClient.clear();
+      setUser(null);
+    });
     return () => setUnauthorizedHandler(null);
   }, []);
 
@@ -52,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Best-effort: the local session still ends even if the network call fails.
     } finally {
       await clearToken();
+      queryClient.clear();
       setUser(null);
     }
   }, []);

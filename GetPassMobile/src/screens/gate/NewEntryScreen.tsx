@@ -14,7 +14,8 @@ import { Asset, launchCamera, launchImageLibrary } from 'react-native-image-pick
 import { PERMISSIONS, RESULTS, check, request } from 'react-native-permissions';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/TabNavigator';
-import { createEntry, EntryPhotoKind, PhotoUploadAsset, uploadEntryPhoto } from '../../api/entries';
+import { EntryPhotoKind, PhotoUploadAsset } from '../../api/entries';
+import { useCreateEntry, useUploadEntryPhoto } from '../../queries/useEntryQueries';
 import { ChallanLineIn, PassType } from '../../types/entries';
 import { ErrorBanner, FieldLabel, Input } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
@@ -136,7 +137,13 @@ function toUploadAsset(asset: Asset): PhotoUploadAsset | null {
   };
 }
 
-async function uploadPhotos(entryId: number, items: PendingPhoto[]): Promise<{
+type UploadPhoto = (args: { entryId: number; asset: PhotoUploadAsset; kind: EntryPhotoKind }) => Promise<unknown>;
+
+async function uploadPhotos(
+  entryId: number,
+  items: PendingPhoto[],
+  uploadPhoto: UploadPhoto,
+): Promise<{
   failed: PendingPhoto[];
   errors: string[];
 }> {
@@ -150,7 +157,7 @@ async function uploadPhotos(entryId: number, items: PendingPhoto[]): Promise<{
       continue;
     }
     try {
-      await uploadEntryPhoto(entryId, asset, item.kind);
+      await uploadPhoto({ entryId, asset, kind: item.kind });
     } catch (error) {
       failed.push(item);
       errors.push(`${item.kind}: ${extractErrorMessage(error, 'Upload failed.')}`);
@@ -263,6 +270,9 @@ export default function NewEntryScreen({ navigation }: Props) {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const createEntryMutation = useCreateEntry();
+  const uploadEntryPhotoMutation = useUploadEntryPhoto();
 
   function updateLine(key: number, patch: Partial<ChallanLineDraft>) {
     setChallanLines(lines => lines.map(line => (line.key === key ? { ...line, ...patch } : line)));
@@ -407,7 +417,7 @@ export default function NewEntryScreen({ navigation }: Props) {
     setIsRetryingPhotos(true);
     setErrorMessage(null);
     try {
-      const result = await uploadPhotos(pendingUpload.entryId, pendingUpload.items);
+      const result = await uploadPhotos(pendingUpload.entryId, pendingUpload.items, uploadEntryPhotoMutation.mutateAsync);
       if (result.failed.length === 0) {
         setPendingUpload(null);
         setSuccessMessage('All selected photos are now attached to the pass.');
@@ -426,7 +436,7 @@ export default function NewEntryScreen({ navigation }: Props) {
     setSuccessMessage(null);
     setIsSubmitting(true);
     try {
-      const entry = await createEntry({
+      const entry = await createEntryMutation.mutateAsync({
         vehicle_number: vehicleNumber.trim(),
         driver_name: driverName.trim(),
         driver_phone: driverPhone.trim() || undefined,
@@ -448,7 +458,7 @@ export default function NewEntryScreen({ navigation }: Props) {
           })
         : [];
       if (selectedPhotos.length > 0) {
-        const result = await uploadPhotos(entry.id, selectedPhotos);
+        const result = await uploadPhotos(entry.id, selectedPhotos, uploadEntryPhotoMutation.mutateAsync);
         if (result.failed.length > 0) {
           setPendingUpload({ entryId: entry.id, items: result.failed });
           setErrorMessage(`The pass was created, but some photos could not be uploaded. Retry the upload below. ${result.errors.join(' ')}`);

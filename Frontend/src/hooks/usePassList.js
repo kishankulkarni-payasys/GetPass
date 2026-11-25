@@ -1,37 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getEntries } from '../api/entries'
+import { entryKeys } from '../api/queryKeys'
 import { apiErrorDetail } from '../i18n/apiErrors'
 
-// Loads GET /entries for the given filters. Filters can change faster than
-// the server answers; only the newest request may update the list.
+// Loads GET /entries for the given filters.
 // `errorDetail` is the server's text (or null with `failed` true), translated by the screen.
 export function usePassList(filters) {
-  const [passes, setPasses] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [failed, setFailed] = useState(false)
-  const [errorDetail, setErrorDetail] = useState(null)
-  const latestRequestRef = useRef(0)
-  const filtersKey = JSON.stringify(filters)
+  const query = useQuery({
+    queryKey: entryKeys.list(filters),
+    queryFn: () => getEntries(filters),
+  })
 
-  const refresh = useCallback(async () => {
-    const requestId = ++latestRequestRef.current
-    setLoading(true)
-    setFailed(false)
-    try {
-      const data = await getEntries(JSON.parse(filtersKey))
-      if (requestId === latestRequestRef.current) setPasses(data)
-    } catch (err) {
-      if (requestId !== latestRequestRef.current) return
-      setFailed(true)
-      setErrorDetail(apiErrorDetail(err))
-    } finally {
-      if (requestId === latestRequestRef.current) setLoading(false)
-    }
-  }, [filtersKey])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  return { passes, loading, failed, errorDetail, refresh }
+  return {
+    passes: query.data ?? [],
+    loading: query.isFetching,
+    failed: query.isError,
+    errorDetail: query.isError ? apiErrorDetail(query.error) : null,
+    refresh: query.refetch,
+  }
 }
