@@ -25,6 +25,9 @@ describe('mobile translations', () => {
       .toBe('बाहेर जाण्यापूर्वी दोन्ही वजने नोंदवणे आवश्यक आहे.');
     expect(translateText('MH12AB1234 has been let out.', 'hi'))
       .toBe('MH12AB1234 को बाहर जाने दिया गया है।');
+    expect(translateText('Scan PO document with OCR', 'mr'))
+      .toBe('OCR ने PO दस्तऐवज स्कॅन करा');
+    expect(translateText('Scan QR / OCR', 'hi')).toBe('QR / OCR स्कैन करें');
   });
 
   it('preserves whitespace and leaves unmapped text unchanged', () => {

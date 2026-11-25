@@ -8,6 +8,7 @@ from app.integrations import AdapterError, log_adapter_failure
 from app.integrations.ocr import DOC_TYPE_PLATE, DOC_TYPES, get_ocr_adapter, normalize_plate
 from app.integrations.po_lookup import MAX_SEARCH_RESULTS, get_po_lookup_adapter
 from app.pass_creation import lookup_po
+from app.pdf_conversion import first_page_as_png
 from app.photo_storage import InvalidPhotoError, read_upload_capped, validate_photo
 from app.schemas import (
     MAX_CHALLAN_LINES,
@@ -47,7 +48,7 @@ def _to_ocr_out(doc_type: str, data: dict) -> OcrResultOut:
 
 @router.post("/ocr", response_model=OcrResultOut)
 async def read_document(image: UploadFile = File(...), doc_type: str = Form(...)):
-    """Stateless: the image is not stored here; the browser uploads it with its kind once the pass exists."""
+    """Stateless OCR: PDF input is rendered from its first page and is not stored."""
     if doc_type not in DOC_TYPES:
         raise HTTPException(status_code=422, detail=UNKNOWN_DOC_TYPE_DETAIL)
     adapter = get_ocr_adapter()
@@ -55,11 +56,16 @@ async def read_document(image: UploadFile = File(...), doc_type: str = Form(...)
         raise HTTPException(status_code=503, detail=OCR_OFF_DETAIL)
     try:
         contents = await read_upload_capped(image)
-        validate_photo(image.content_type, contents)
+        content_type = image.content_type
+        if content_type == "application/pdf":
+            contents = first_page_as_png(contents)
+            content_type = "image/png"
+        else:
+            validate_photo(content_type, contents)
     except InvalidPhotoError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     try:
-        data = adapter.read(contents, image.content_type, doc_type)
+        data = adapter.read(contents, content_type, doc_type)
         return _to_ocr_out(doc_type, data)
     except (AdapterError, ValueError) as exc:
         log_adapter_failure("ocr", exc)

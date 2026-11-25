@@ -235,7 +235,7 @@ Errors use the existing style `{"detail": "<English sentence>"}`; every new `det
 | Method / path | Role | Request | Response | Errors |
 |---|---|---|---|---|
 | GET `/config` | gate-in roles | — | `{ocr_enabled, po_lookup_enabled, ocr_confidence_threshold, max_challan_lines}` | — |
-| POST `/ocr` | gate-in roles | multipart `image` (jpeg/png/webp, ≤10 MB, same validation as photos) + `doc_type` = `plate`/`po`/`challan` | plate `{plate, confidence}`; po `{po_number, supplier_name, confidence, field_confidence:{...}}`; challan `{challan_number, lines:[{material, quantity, uom, confidence}], confidence}` | 422 bad image / doc_type; 503 "OCR service is not configured"; 502 "OCR service failed. Enter the details manually." |
+| POST `/ocr` | gate-in roles | multipart `image` (jpeg/png/webp or PDF, ≤10 MB) + `doc_type` = `plate`/`po`/`challan`; PDF input renders its first page to PNG for OCR | plate `{plate, confidence}`; po `{po_number, supplier_name, confidence, field_confidence:{...}}`; challan `{challan_number, lines:[{material, quantity, uom, confidence}], confidence}` | 422 bad image/PDF / doc_type; 503 "OCR service is not configured"; 502 "OCR service failed. Enter the details manually." |
 | GET `/po/{po_number}` | gate-in roles | — | `{status: matched/not_found/not_checked, po: {po_number, supplier_name, lines:[{material, uom, open_qty}]}|null}` | 502 never; adapter errors return `not_checked` |
 | GET `/po-search?supplier=` | gate-in roles | supplier ≥ 3 chars | `[{po_number, supplier_name, open_lines}]` (max 20) | 422 short query |
 

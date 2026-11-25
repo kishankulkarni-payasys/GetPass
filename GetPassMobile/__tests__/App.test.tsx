@@ -10,6 +10,12 @@ jest.mock('react-native-image-picker', () => ({
   launchCamera: jest.fn(),
   launchImageLibrary: jest.fn(),
 }));
+jest.mock('@react-native-documents/picker', () => ({
+  errorCodes: { OPERATION_CANCELED: 'OPERATION_CANCELED' },
+  isErrorWithCode: () => false,
+  pick: jest.fn(),
+  types: { pdf: 'application/pdf' },
+}));
 jest.mock('react-native-permissions', () => ({
   PERMISSIONS: {
     ANDROID: { CAMERA: 'android.permission.CAMERA' },

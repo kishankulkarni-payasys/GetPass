@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   Modal,
   Platform,
@@ -8,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { errorCodes, isErrorWithCode, pick, types } from '@react-native-documents/picker';
 import { Camera, CameraType } from 'react-native-camera-kit';
 import { Asset, launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { PERMISSIONS, RESULTS, check, request } from 'react-native-permissions';
@@ -22,6 +24,7 @@ import { ErrorBanner, FieldLabel, Input } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 import { background, raisedSurface, insetSurfaceStyle } from '../../theme/neumorphism';
 import { Text } from '../../components/LocalizedText';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 type Props = MainTabScreenProps<'GateInTab'>;
 type PhotoAssets = Partial<Record<EntryPhotoKind, Asset>>;
@@ -65,6 +68,7 @@ const PASS_TYPE_OPTIONS: { value: PassType; label: string }[] = [
 ];
 
 const MAX_CHALLAN_LINES = 20;
+const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024;
 
 const PHOTO_TILES: Array<{ kind: EntryPhotoKind; label: string; hint: string }> = [
   { kind: 'plate', label: 'Number plate', hint: 'Photo of the front plate' },
@@ -285,6 +289,7 @@ function ActionButton({
 }
 
 export default function NewEntryScreen({ navigation }: Props) {
+  const { t } = useLanguage();
   const nextLineKey = useRef(1);
   const qrHandled = useRef(false);
   const [passType, setPassType] = useState<PassType>('inward');
@@ -424,20 +429,17 @@ export default function NewEntryScreen({ navigation }: Props) {
       }
       setPhotos(current => ({ ...current, [kind]: asset }));
 
-      // OCR is camera-only (business rule 1): a library pick stays manual-fill only,
-      // and a retake replaces the photo and re-runs OCR (spec flow step 7).
+      // The photo-library tile stays manual-fill only; camera capture runs OCR here.
       if (kind === 'po_doc' && source === 'camera') {
-        runPoOcr(asset);
+        const uploadAsset = toUploadAsset(asset);
+        if (uploadAsset) runPoOcr(uploadAsset);
       }
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not open the camera or image picker.'));
     }
   }
 
-  async function runPoOcr(asset: Asset) {
-    const uploadAsset = toUploadAsset(asset);
-    if (!uploadAsset) return;
-
+  async function runPoOcr(uploadAsset: PhotoUploadAsset) {
     poOcrAbortRef.current?.abort();
     const controller = new AbortController();
     poOcrAbortRef.current = controller;
@@ -449,8 +451,8 @@ export default function NewEntryScreen({ navigation }: Props) {
       if (poOcrRequestId.current !== requestId) return; // a newer retake superseded this call
 
       if (!result.po_number) {
-        // No PO number found: fall back to manual, the field keeps whatever the guard last set.
         setPoOcrStatus('error');
+        setErrorMessage(t('Could not find a PO number in the selected document. Enter it manually.'));
         return;
       }
 
@@ -466,11 +468,42 @@ export default function NewEntryScreen({ navigation }: Props) {
         setSupplierName(current => (current.trim() ? current : (result.supplier_name as string)));
       }
       setPoOcrStatus('success');
-    } catch {
+    } catch (error) {
       if (poOcrRequestId.current !== requestId) return; // stale/cancelled call, ignore
-      // OCR failure (503/502/network/timeout) never blocks gate-in (business rule 2).
       setPoOcrStatus('error');
+      setErrorMessage(extractErrorMessage(error, 'Could not read the PO document. Enter it manually.'));
     }
+  }
+
+  async function choosePdfForOcr() {
+    setErrorMessage(null);
+    try {
+      const [file] = await pick({ type: [types.pdf], mode: 'import' });
+      if (file.error) throw new Error(file.error);
+      if (file.size != null && file.size > MAX_PDF_SIZE_BYTES) {
+        setPoOcrStatus('error');
+        setErrorMessage(t('File exceeds the 10MB size limit'));
+        return;
+      }
+
+      await runPoOcr({
+        uri: file.uri,
+        name: file.name || 'purchase-order.pdf',
+        type: 'application/pdf',
+      });
+    } catch (error) {
+      if (isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED) return;
+      setPoOcrStatus('error');
+      setErrorMessage(extractErrorMessage(error, 'Could not open the selected PDF.'));
+    }
+  }
+
+  function openPoOcrOptions() {
+    Alert.alert(t('Choose PO source'), t("Take a PO photo or select a PDF. OCR reads the PDF's first page."), [
+      { text: t('Take PO photo'), onPress: () => handlePhoto('po_doc', 'camera') },
+      { text: t('Choose PDF'), onPress: choosePdfForOcr },
+      { text: t('Cancel'), style: 'cancel' },
+    ]);
   }
 
   async function openQrScanner() {
@@ -478,6 +511,23 @@ export default function NewEntryScreen({ navigation }: Props) {
     if (!(await ensureCameraPermission())) return;
     qrHandled.current = false;
     setIsScannerOpen(true);
+  }
+
+  function openScanOptions() {
+    setErrorMessage(null);
+    if (passType === 'inward') {
+      Alert.alert(t('Choose scan type'), t('Scan a QR code to fill pass details, or scan a PO document to read its number with OCR.'), [
+        { text: t('Scan QR code'), onPress: openQrScanner },
+        { text: t('Scan PO document with OCR'), onPress: openPoOcrOptions },
+        { text: t('Cancel'), style: 'cancel' },
+      ]);
+      return;
+    }
+
+    Alert.alert(t('Choose scan type'), t('Scan a QR code to fill pass details.'), [
+      { text: t('Scan QR code'), onPress: openQrScanner },
+      { text: t('Cancel'), style: 'cancel' },
+    ]);
   }
 
   function handleQrScan(rawValue: string) {
@@ -523,6 +573,7 @@ export default function NewEntryScreen({ navigation }: Props) {
   }
 
   async function handleSubmit() {
+    console.log('[GateIn] Create Entry button clicked');
     if (!canSubmit) return;
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -587,8 +638,8 @@ export default function NewEntryScreen({ navigation }: Props) {
               ? 'Take photos of the number plate, PO and challan, then type the details below.'
               : 'Visitors, service and other vehicles. Vehicle number and driver name are required.'}
           </Text>
-          <TouchableOpacity accessibilityRole="button" style={styles.qrButton} onPress={openQrScanner}>
-            <Text style={styles.qrButtonText}>Scan QR code</Text>
+          <TouchableOpacity accessibilityRole="button" style={styles.qrButton} onPress={openScanOptions}>
+            <Text style={styles.qrButtonText}>Scan QR / OCR</Text>
           </TouchableOpacity>
         </View>
 
