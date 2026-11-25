@@ -289,7 +289,9 @@ export default function GrnDetailScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
-      <KeyboardAvoidingView style={styles.flexOne} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Paired with android:windowSoftInputMode="adjustResize" in AndroidManifest.xml;
+          see LoginScreen.tsx for why Android needs 'height' instead of 'undefined'. */}
+      <KeyboardAvoidingView style={styles.flexOne} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}

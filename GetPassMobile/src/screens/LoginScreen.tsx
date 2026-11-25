@@ -105,7 +105,11 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom', 'left', 'right']}>
     <KeyboardAvoidingView
       style={styles.flexOne}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // Paired with android:windowSoftInputMode="adjustResize" in AndroidManifest.xml.
+      // 'undefined' on Android disables KeyboardAvoidingView entirely, which leaves
+      // inputs hidden behind the keyboard; 'height' plus the ScrollView below keeps
+      // focused fields visible without double-shifting the layout.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>

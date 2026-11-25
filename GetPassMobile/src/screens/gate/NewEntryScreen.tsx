@@ -15,7 +15,9 @@ import { PERMISSIONS, RESULTS, check, request } from 'react-native-permissions';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/TabNavigator';
 import { EntryPhotoKind, PhotoUploadAsset } from '../../api/entries';
+import { OCR_DOC_TYPES, readDocument } from '../../api/gateIn';
 import { useCreateEntry, useUploadEntryPhoto } from '../../queries/useEntryQueries';
+import { DEFAULT_OCR_CONFIDENCE_THRESHOLD, useGateInConfig } from '../../queries/useGateInQueries';
 import { ChallanLineIn, PassType } from '../../types/entries';
 import { ErrorBanner, FieldLabel, Input } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
@@ -39,6 +41,22 @@ interface PendingPhotoUpload {
   entryId: number;
   items: PendingPhoto[];
 }
+
+/**
+ * The PO Number field, tracking the OCR value alongside what the guard
+ * finally typed so a low-confidence read can be flagged for confirmation
+ * (ports Frontend/src/hooks/useInwardPassForm.js's OCR_FIELDS pattern).
+ */
+interface PoField {
+  value: string;
+  ocrValue: string | null;
+  confidence: number | null;
+  confirmed: boolean;
+}
+
+type PoOcrStatus = 'idle' | 'loading' | 'success' | 'error';
+
+const EMPTY_PO_FIELD: PoField = { value: '', ocrValue: null, confidence: null, confirmed: false };
 
 const PASS_TYPE_OPTIONS: { value: PassType; label: string }[] = [
   { value: 'inward', label: 'Inward material' },
@@ -128,6 +146,16 @@ function isLineComplete(line: ChallanLineDraft): boolean {
   );
 }
 
+function isLowConfidence(confidence: number | null, threshold: number): boolean {
+  return confidence !== null && confidence !== undefined && confidence < threshold;
+}
+
+// A low-confidence OCR value must be touched: confirmed, or edited away from the OCR value.
+// Matches Frontend/src/hooks/useInwardPassForm.js's fieldNeedsConfirm.
+function poFieldNeedsConfirm(field: PoField, threshold: number): boolean {
+  return isLowConfidence(field.confidence, threshold) && !field.confirmed && field.value === field.ocrValue;
+}
+
 function toUploadAsset(asset: Asset): PhotoUploadAsset | null {
   if (!asset.uri) return null;
   return {
@@ -193,6 +221,7 @@ function PhotoTile({
   disabled,
   onTakePhoto,
   onChooseFile,
+  ocrStatus,
 }: {
   label: string;
   hint: string;
@@ -200,6 +229,7 @@ function PhotoTile({
   disabled: boolean;
   onTakePhoto: () => void;
   onChooseFile: () => void;
+  ocrStatus?: PoOcrStatus;
 }) {
   return (
     <View style={styles.photoCard}>
@@ -214,6 +244,10 @@ function PhotoTile({
       <Text style={styles.photoNote}>
         {photo ? 'Photo is ready to save with the pass.' : 'Photo is saved with the pass. Type the details below.'}
       </Text>
+      {ocrStatus === 'loading' ? <Text style={styles.ocrHint}>Reading PO...</Text> : null}
+      {ocrStatus === 'error' ? (
+        <Text style={styles.ocrHintError}>Could not read the PO automatically - enter the number manually.</Text>
+      ) : null}
       <View style={styles.photoActions}>
         <ActionButton label="Take photo" onPress={onTakePhoto} disabled={disabled} />
         <ActionButton label="Choose file" onPress={onChooseFile} disabled={disabled} secondary />
@@ -257,7 +291,8 @@ export default function NewEntryScreen({ navigation }: Props) {
   const [driverName, setDriverName] = useState('');
   const [driverPhone, setDriverPhone] = useState('');
   const [supplierName, setSupplierName] = useState('');
-  const [poNumber, setPoNumber] = useState('');
+  const [poField, setPoField] = useState<PoField>(EMPTY_PO_FIELD);
+  const [poOcrStatus, setPoOcrStatus] = useState<PoOcrStatus>('idle');
   const [challanNumber, setChallanNumber] = useState('');
   const [challanLines, setChallanLines] = useState<ChallanLineDraft[]>([newLine(0)]);
   const [purpose, setPurpose] = useState('');
@@ -270,9 +305,14 @@ export default function NewEntryScreen({ navigation }: Props) {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const poOcrRequestId = useRef(0);
+  const poOcrAbortRef = useRef<AbortController | null>(null);
 
   const createEntryMutation = useCreateEntry();
   const uploadEntryPhotoMutation = useUploadEntryPhoto();
+  const gateInConfigQuery = useGateInConfig();
+  const ocrConfidenceThreshold = gateInConfigQuery.data?.ocr_confidence_threshold ?? DEFAULT_OCR_CONFIDENCE_THRESHOLD;
+  const poNeedsConfirm = poFieldNeedsConfirm(poField, ocrConfidenceThreshold);
 
   function updateLine(key: number, patch: Partial<ChallanLineDraft>) {
     setChallanLines(lines => lines.map(line => (line.key === key ? { ...line, ...patch } : line)));
@@ -293,7 +333,9 @@ export default function NewEntryScreen({ navigation }: Props) {
     setDriverName('');
     setDriverPhone('');
     setSupplierName('');
-    setPoNumber('');
+    setPoField(EMPTY_PO_FIELD);
+    setPoOcrStatus('idle');
+    poOcrAbortRef.current?.abort();
     setChallanNumber('');
     setChallanLines([newLine(nextLineKey.current++)]);
     setPurpose('');
@@ -317,7 +359,7 @@ export default function NewEntryScreen({ navigation }: Props) {
   }
 
   const requiredInwardFieldsFilled = Boolean(
-    vehicleNumber.trim() && driverName.trim() && poNumber.trim() && challanNumber.trim(),
+    vehicleNumber.trim() && driverName.trim() && poField.value.trim() && challanNumber.trim(),
   );
   const hasCompleteLine = challanLines.some(isLineComplete);
   const hasPartialLine = challanLines.some(line => isLineStarted(line) && !isLineComplete(line));
@@ -329,7 +371,8 @@ export default function NewEntryScreen({ navigation }: Props) {
       ? requiredInwardFieldsFilled &&
         hasCompleteLine &&
         !hasPartialLine &&
-        challanLines.length <= MAX_CHALLAN_LINES
+        challanLines.length <= MAX_CHALLAN_LINES &&
+        !poNeedsConfirm
       : Boolean(vehicleNumber.trim() && driverName.trim()));
 
   async function ensureCameraPermission(): Promise<boolean> {
@@ -379,8 +422,53 @@ export default function NewEntryScreen({ navigation }: Props) {
         throw new Error('The selected image could not be opened.');
       }
       setPhotos(current => ({ ...current, [kind]: asset }));
+
+      // OCR is camera-only (business rule 1): a library pick stays manual-fill only,
+      // and a retake replaces the photo and re-runs OCR (spec flow step 7).
+      if (kind === 'po_doc' && source === 'camera') {
+        runPoOcr(asset);
+      }
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not open the camera or image picker.'));
+    }
+  }
+
+  async function runPoOcr(asset: Asset) {
+    const uploadAsset = toUploadAsset(asset);
+    if (!uploadAsset) return;
+
+    poOcrAbortRef.current?.abort();
+    const controller = new AbortController();
+    poOcrAbortRef.current = controller;
+    const requestId = ++poOcrRequestId.current;
+    setPoOcrStatus('loading');
+
+    try {
+      const result = await readDocument(uploadAsset, OCR_DOC_TYPES.po, controller.signal);
+      if (poOcrRequestId.current !== requestId) return; // a newer retake superseded this call
+
+      if (!result.po_number) {
+        // No PO number found: fall back to manual, the field keeps whatever the guard last set.
+        setPoOcrStatus('error');
+        return;
+      }
+
+      const confidence = result.field_confidence?.po_number ?? result.confidence ?? null;
+      setPoField(current => {
+        // Don't silently overwrite a value the guard already hand-edited away from
+        // the previous OCR value (spec flow step 7 / AC5).
+        const guardEdited = current.ocrValue !== null && current.value !== current.ocrValue;
+        if (guardEdited) return current;
+        return { value: result.po_number as string, ocrValue: result.po_number as string, confidence, confirmed: false };
+      });
+      if (result.supplier_name) {
+        setSupplierName(current => (current.trim() ? current : (result.supplier_name as string)));
+      }
+      setPoOcrStatus('success');
+    } catch {
+      if (poOcrRequestId.current !== requestId) return; // stale/cancelled call, ignore
+      // OCR failure (503/502/network/timeout) never blocks gate-in (business rule 2).
+      setPoOcrStatus('error');
     }
   }
 
@@ -404,7 +492,10 @@ export default function NewEntryScreen({ navigation }: Props) {
     if (values.vehicle_number) setVehicleNumber(values.vehicle_number);
     if (values.driver_name) setDriverName(values.driver_name);
     if (values.driver_phone) setDriverPhone(values.driver_phone);
-    if (values.po_number) setPoNumber(values.po_number);
+    if (values.po_number) {
+      // QR values carry no OCR confidence; this is a plain manual-equivalent fill.
+      setPoField({ value: values.po_number, ocrValue: null, confidence: null, confirmed: false });
+    }
     if (values.challan_number) setChallanNumber(values.challan_number);
     if (values.supplier_transporter_name) setSupplierName(values.supplier_transporter_name);
     if (values.purpose) setPurpose(values.purpose);
@@ -442,8 +533,11 @@ export default function NewEntryScreen({ navigation }: Props) {
         driver_phone: driverPhone.trim() || undefined,
         supplier_transporter_name: supplierName.trim() || undefined,
         pass_type: passType,
-        gate_in_method: gateInMethod,
-        po_number: passType === 'inward' ? poNumber.trim() : undefined,
+        // OCR takes priority: it already gates submit on the PO field being
+        // confirmed or edited, so any OCR-sourced value here was reviewed by the
+        // guard (spec business rule 6 / AC8, mirrors web's gateInMethod()).
+        gate_in_method: passType === 'inward' && poField.ocrValue !== null ? 'ocr' : gateInMethod,
+        po_number: passType === 'inward' ? poField.value.trim() : undefined,
         challan_number: passType === 'inward' ? challanNumber.trim() : undefined,
         challan_lines: passType === 'inward' ? buildChallanLines() : undefined,
         purpose: passType === 'general' ? purpose.trim() || undefined : undefined,
@@ -527,6 +621,7 @@ export default function NewEntryScreen({ navigation }: Props) {
                 disabled={isSubmitting || isRetryingPhotos}
                 onTakePhoto={() => handlePhoto(tile.kind, 'camera')}
                 onChooseFile={() => handlePhoto(tile.kind, 'library')}
+                ocrStatus={tile.kind === 'po_doc' ? poOcrStatus : undefined}
               />
             ))}
           </View>
@@ -553,8 +648,39 @@ export default function NewEntryScreen({ navigation }: Props) {
 
           {passType === 'inward' ? (
             <>
-              <FieldLabel label="PO number *" />
-              <Input value={poNumber} onChangeText={setPoNumber} autoCapitalize="characters" placeholder="PO number" />
+              <View style={styles.fieldLabelRow}>
+                <FieldLabel label="PO number *" />
+                {poField.confidence !== null ? (
+                  <Text
+                    style={[
+                      styles.confidenceChip,
+                      isLowConfidence(poField.confidence, ocrConfidenceThreshold)
+                        ? styles.confidenceChipLow
+                        : styles.confidenceChipHigh,
+                    ]}
+                  >
+                    OCR {Math.round(poField.confidence)}%
+                  </Text>
+                ) : null}
+              </View>
+              <Input
+                value={poField.value}
+                onChangeText={text => setPoField(current => ({ ...current, value: text }))}
+                autoCapitalize="characters"
+                maxLength={50}
+                placeholder="PO number"
+              />
+              {poNeedsConfirm ? (
+                <View style={styles.confirmRow}>
+                  <Text style={styles.confirmHint}>Low-confidence read - confirm or edit before submitting.</Text>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => setPoField(current => ({ ...current, confirmed: true }))}
+                  >
+                    <Text style={styles.confirmLink}>Confirm value</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
 
               <FieldLabel label="Challan number *" />
               <Input value={challanNumber} onChangeText={setChallanNumber} placeholder="Challan number" />
@@ -726,6 +852,8 @@ const styles = StyleSheet.create({
   photoLabelText: { color: '#fff', fontSize: 9, fontWeight: '700' },
   photoHint: { color: '#cbd5e1', fontSize: 11, textAlign: 'center' },
   photoNote: { color: '#526171', fontSize: 10, lineHeight: 15, marginTop: 8, marginBottom: 6 },
+  ocrHint: { color: '#b8410e', fontSize: 10, lineHeight: 14, marginBottom: 6 },
+  ocrHintError: { color: '#9a3412', fontSize: 10, lineHeight: 14, marginBottom: 6 },
   photoActions: { flexDirection: 'row', gap: 6 },
   actionButton: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 9 },
   actionButtonPrimary: { backgroundColor: '#b8410e' },
@@ -741,6 +869,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   sectionTitle: { color: '#17202b', fontSize: 14, fontWeight: '700' },
+  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  confidenceChip: { fontSize: 10, fontWeight: '700', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, overflow: 'hidden' },
+  confidenceChipHigh: { color: '#1e8e5a', backgroundColor: '#e8f6ee' },
+  confidenceChipLow: { color: '#b45309', backgroundColor: '#fef3c7' },
+  confirmRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 },
+  confirmHint: { flex: 1, color: '#b45309', fontSize: 10, lineHeight: 14, marginRight: 8 },
+  confirmLink: { color: '#b8410e', fontSize: 11, fontWeight: '700' },
   challanHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, marginBottom: 2 },
   lineCount: { color: '#64748b', fontFamily: 'monospace', fontSize: 10 },
   challanLine: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },

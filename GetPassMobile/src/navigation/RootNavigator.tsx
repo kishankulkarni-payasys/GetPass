@@ -120,7 +120,7 @@ export default function RootNavigator() {
                 headerRight: BrandHeaderAvatar,
               }}
             />
-            <Stack.Screen name="QualityResult" component={QualityResultScreen} options={{ headerShown: true, title: 'Quality Result', ...HEADER_OPTIONS }} />
+            <Stack.Screen name="QualityResult" component={QualityResultScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="GrnDetail"
               component={GrnDetailScreen}
