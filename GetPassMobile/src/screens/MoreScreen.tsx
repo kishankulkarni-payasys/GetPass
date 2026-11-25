@@ -35,6 +35,7 @@ function getMoreItems(role?: UserRole): MoreItem[] {
     : [];
 
   return [
+    { key: 'scan', label: 'Scan QR', icon: 'qr_code_scanner' },
     ...actionItems,
     { key: 'account', label: 'Account', icon: 'account_circle' },
     { key: 'settings', label: 'Settings', icon: 'settings' },
@@ -66,6 +67,9 @@ function MoreRow({
 
 function navigateToItem(navigation: Props['navigation'], key: string) {
   switch (key) {
+    case 'scan':
+      navigation.navigate('Scan');
+      break;
     case 'gateOut':
       navigation.navigate('EntryList', { mode: 'open' });
       break;

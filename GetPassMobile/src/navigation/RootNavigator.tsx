@@ -15,6 +15,7 @@ import GrnDetailScreen from '../screens/stores/GrnDetailScreen';
 import UsersScreen from '../screens/UsersScreen';
 import AccountScreen from '../screens/AccountScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import ScanScreen from '../screens/ScanScreen';
 import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
 import type { WeighmentKind } from '../types/entries';
 
@@ -36,6 +37,7 @@ export type RootStackParamList = {
   Users: undefined;
   Account: undefined;
   Settings: undefined;
+  Scan: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -151,6 +153,7 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="Account" component={AccountScreen} options={{ headerShown: true, title: 'Account', ...HEADER_OPTIONS }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings', ...HEADER_OPTIONS }} />
+            <Stack.Screen name="Scan" component={ScanScreen} options={{ headerShown: true, title: 'Scan QR', ...HEADER_OPTIONS }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

@@ -81,6 +81,9 @@ export default function TabNavigator({ navigation }: Props) {
     setActiveMoreKey(key);
     setIsMoreOpen(false);
     switch (key) {
+      case 'scan':
+        navigation.navigate('Scan');
+        break;
       case 'gateOut':
         navigation.navigate('EntryList', { mode: 'open' });
         break;

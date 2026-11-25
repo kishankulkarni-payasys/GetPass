@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cancelEntry, gateOutEntry, getEntry } from '../../api/entries';
 import { getApiBaseUrl } from '../../config/env';
@@ -14,6 +15,7 @@ import type { RootStackParamList } from '../../navigation/RootNavigator';
 import type { AuditOut, PassDetailOut, PassState, PhotoOut, WeighmentOut } from '../../types/entries';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { buildEntryQrPayload } from '../../utils/qrPayload';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EntryDetail'>;
 type Tone = 'good' | 'warn' | 'crit' | 'neutral';
@@ -457,6 +459,19 @@ function AuditHistory({ audit }: { audit: AuditOut[] }) {
   );
 }
 
+function PassQrSection({ entry }: { entry: PassDetailOut }) {
+  const payload = buildEntryQrPayload(entry.id, entry.vehicle_number);
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Pass QR code</Text>
+      <Text style={styles.qrHint}>Checkpoints can scan this to open this pass directly.</Text>
+      <View style={styles.qrWrap}>
+        <QRCode value={payload} size={160} />
+      </View>
+    </View>
+  );
+}
+
 export default function EntryDetailScreen({ route, navigation }: Props) {
   const { entryId } = route.params;
   const { user } = useAuth();
@@ -514,6 +529,8 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
   const canStartGrn = role && STORE_ROLES.has(role) && entry.pass_state === 'QUALITY_RESOLVED';
   const canViewGrn = role && STORE_ROLES.has(role) && (entry.grn != null || entry.pass_state === 'GRN_DRAFT' || entry.pass_state === 'GRN_APPROVED');
   const canEnterQuality = role && QUALITY_ROLES.has(role) && entry.pass_state === 'QUALITY_PENDING';
+  // Only the roles that staff the gate (who'd print/show the pass at a checkpoint) see its QR.
+  const canShowQr = Boolean(role && GATE_OUT_ROLES.has(role));
   const poStatus = poLookupStatus(entry.po_lookup_status);
   const actions: { key: string; label: string; variant: ActionVariant; onPress: () => void }[] = [];
 
@@ -593,6 +610,8 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
       </View>
 
       <PassJourney entry={entry} />
+
+      {canShowQr ? <PassQrSection entry={entry} /> : null}
 
       {actionError ? <ErrorBanner message={actionError} /> : null}
       {actions.length > 0 ? (
@@ -755,6 +774,8 @@ const styles = StyleSheet.create({
   actionTextSecondary: { color: '#131a22' },
   section: { backgroundColor: '#fff', borderRadius: 11, borderWidth: 1, borderColor: '#dce2e8', padding: 14, marginBottom: 12 },
   sectionTitle: { color: '#15263a', fontSize: 14, fontWeight: '700', marginBottom: 10 },
+  qrHint: { color: '#526171', fontSize: 11, marginBottom: 12 },
+  qrWrap: { alignItems: 'center', paddingVertical: 4 },
   documentFact: { minHeight: 54, justifyContent: 'center', borderWidth: 1, borderColor: '#dce2e8', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 8 },
   documentLabel: { color: '#34445a', fontSize: 10, marginBottom: 4 },
   documentValue: { color: '#15263a', fontSize: 13, fontWeight: '700' },
