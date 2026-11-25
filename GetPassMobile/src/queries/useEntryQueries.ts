@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   cancelEntry,
   createEntry,
-  EntryPhotoKind,
   gateOutEntry,
   getEntry,
   listEntries,
+  PhotoUploadKind,
   PhotoUploadAsset,
   uploadEntryPhoto,
 } from '../api/entries';
@@ -43,8 +43,12 @@ export function useCreateEntry() {
 export function useUploadEntryPhoto() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ entryId, asset, kind }: { entryId: number; asset: PhotoUploadAsset; kind: EntryPhotoKind }) =>
-      uploadEntryPhoto(entryId, asset, kind),
+    mutationFn: ({ entryId, asset, kind, weighmentId }: {
+      entryId: number;
+      asset: PhotoUploadAsset;
+      kind: PhotoUploadKind;
+      weighmentId?: number;
+    }) => uploadEntryPhoto(entryId, asset, kind, weighmentId),
     onSuccess: (_data, { entryId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.entryDetail(entryId) });
     },

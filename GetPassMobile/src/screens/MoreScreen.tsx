@@ -15,12 +15,12 @@ interface MoreItem {
   icon: TabBarIconName;
 }
 
-const PRIMARY_TAB_KEYS = new Set(['dashboard', 'gateIn', 'stores']);
+// Actions already surfaced as real bottom-tab entries (see TabNavigator.tsx) are left out of
+// More so a role never sees the same destination listed in both places.
+const PRIMARY_TAB_KEYS = new Set(['dashboard', 'gateIn', 'stores', 'weighbridge', 'quality']);
 
 const ACTION_DETAILS: Record<string, Omit<MoreItem, 'key'>> = {
   gateOut: { label: 'Gate-out', icon: 'logout' },
-  weighbridge: { label: 'Weighbridge', icon: 'balance' },
-  quality: { label: 'Quality', icon: 'verified_user' },
   users: { label: 'Users', icon: 'group' },
 };
 
@@ -35,7 +35,6 @@ function getMoreItems(role?: UserRole): MoreItem[] {
     : [];
 
   return [
-    { key: 'scan', label: 'Scan QR', icon: 'qr_code_scanner' },
     ...actionItems,
     { key: 'account', label: 'Account', icon: 'account_circle' },
     { key: 'settings', label: 'Settings', icon: 'settings' },
@@ -67,17 +66,8 @@ function MoreRow({
 
 function navigateToItem(navigation: Props['navigation'], key: string) {
   switch (key) {
-    case 'scan':
-      navigation.navigate('Scan');
-      break;
     case 'gateOut':
       navigation.navigate('EntryList', { mode: 'open' });
-      break;
-    case 'weighbridge':
-      navigation.navigate('Weighbridge');
-      break;
-    case 'quality':
-      navigation.navigate('QualityQueue');
       break;
     case 'users':
       navigation.navigate('Users');

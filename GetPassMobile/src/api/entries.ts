@@ -10,6 +10,7 @@ import {
 } from '../types/entries';
 
 export type EntryPhotoKind = 'plate' | 'po_doc' | 'challan_doc';
+export type PhotoUploadKind = EntryPhotoKind | 'weigh_frame';
 
 export interface PhotoUploadAsset {
   uri: string;
@@ -25,7 +26,8 @@ export async function createEntry(payload: VehicleEntryCreate): Promise<VehicleE
 export async function uploadEntryPhoto(
   entryId: number,
   asset: PhotoUploadAsset,
-  kind: EntryPhotoKind,
+  kind: PhotoUploadKind,
+  weighmentId?: number,
 ): Promise<PhotoOut[]> {
   const formData = new FormData();
   formData.append('files', {
@@ -34,6 +36,7 @@ export async function uploadEntryPhoto(
     type: asset.type,
   } as unknown as Blob);
   formData.append('kind', kind);
+  if (weighmentId != null) formData.append('weighment_id', String(weighmentId));
 
   const { data } = await apiClient.post<PhotoOut[]>(`/entries/${entryId}/photos`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

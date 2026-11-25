@@ -10,6 +10,8 @@ import DashboardScreen from '../screens/DashboardScreen';
 import NewEntryScreen from '../screens/gate/NewEntryScreen';
 import EntryListScreen from '../screens/gate/EntryListScreen';
 import GrnListScreen from '../screens/stores/GrnListScreen';
+import WeighbridgeScreen from '../screens/weighbridge/WeighbridgeScreen';
+import QualityQueueScreen from '../screens/quality/QualityQueueScreen';
 import MoreScreen, { MoreSectionsSheet } from '../screens/MoreScreen';
 import { colors } from '../components/ui';
 import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
@@ -23,6 +25,8 @@ export type MainTabParamList = {
   GateInTab: undefined;
   EntryLogTab: { mode: 'all' };
   StoresTab: undefined;
+  WeighbridgeTab: undefined;
+  QualityTab: undefined;
   MoreTab: undefined;
 };
 
@@ -64,6 +68,17 @@ function EntryLogTabScreen(props: MainTabScreenProps<'EntryLogTab'>) {
   return <EntryListScreen {...(props as unknown as NativeStackScreenProps<RootStackParamList, 'EntryList'>)} />;
 }
 
+// WeighbridgeScreen and QualityQueueScreen are likewise shared with their own root-stack
+// entries (pushed from More previously, now also tabs), so the same type-reconciling
+// wrapper pattern as EntryLogTabScreen applies here.
+function WeighbridgeTabScreen(props: MainTabScreenProps<'WeighbridgeTab'>) {
+  return <WeighbridgeScreen {...(props as unknown as NativeStackScreenProps<RootStackParamList, 'Weighbridge'>)} />;
+}
+
+function QualityTabScreen(props: MainTabScreenProps<'QualityTab'>) {
+  return <QualityQueueScreen {...(props as unknown as NativeStackScreenProps<RootStackParamList, 'QualityQueue'>)} />;
+}
+
 export default function TabNavigator({ navigation }: Props) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [activeMoreKey, setActiveMoreKey] = useState<string | null>(null);
@@ -75,23 +90,17 @@ export default function TabNavigator({ navigation }: Props) {
   const showGateIn = hasAction('gateIn');
   const showEntryLog = hasAction('gateOut');
   const showStores = hasAction('stores');
-  const hasPrimaryTabs = showDashboard || showGateIn || showEntryLog || showStores;
+  const showWeighbridge = hasAction('weighbridge');
+  const showQuality = hasAction('quality');
+  const hasPrimaryTabs =
+    showDashboard || showGateIn || showEntryLog || showStores || showWeighbridge || showQuality;
 
   function selectMoreItem(key: string) {
     setActiveMoreKey(key);
     setIsMoreOpen(false);
     switch (key) {
-      case 'scan':
-        navigation.navigate('Scan');
-        break;
       case 'gateOut':
         navigation.navigate('EntryList', { mode: 'open' });
-        break;
-      case 'weighbridge':
-        navigation.navigate('Weighbridge');
-        break;
-      case 'quality':
-        navigation.navigate('QualityQueue');
         break;
       case 'users':
         navigation.navigate('Users');
@@ -131,6 +140,12 @@ export default function TabNavigator({ navigation }: Props) {
         ) : null}
         {showStores ? (
           <Tab.Screen name="StoresTab" component={GrnListScreen} options={{ title: 'Stores / GRN', ...tabOptions('Stores/GRN', 'inventory_2') }} />
+        ) : null}
+        {showWeighbridge ? (
+          <Tab.Screen name="WeighbridgeTab" component={WeighbridgeTabScreen} options={{ title: 'Weighbridge', ...tabOptions('Weighbridge', 'balance') }} />
+        ) : null}
+        {showQuality ? (
+          <Tab.Screen name="QualityTab" component={QualityTabScreen} options={{ title: 'Quality', ...tabOptions('Quality', 'verified_user') }} />
         ) : null}
         <Tab.Screen
           name="MoreTab"

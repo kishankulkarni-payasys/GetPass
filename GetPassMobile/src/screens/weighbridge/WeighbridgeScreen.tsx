@@ -138,7 +138,7 @@ export default function WeighbridgeScreen({ navigation }: Props) {
       }
       renderItem={({ item }) => {
         const nextKind = getNextWeighment(item);
-        const actionLabel = nextKind === 'gross' ? 'Capture gross' : nextKind === 'tare' ? 'Capture tare' : null;
+        const actionLabel = nextKind === 'gross' ? 'Capture gross' : nextKind === 'tare' ? 'Capture tare' : 'Open';
         return (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -173,21 +173,24 @@ export default function WeighbridgeScreen({ navigation }: Props) {
               </View>
             </View>
 
-            {actionLabel && nextKind ? (
-              <TouchableOpacity
-                accessibilityRole="button"
-                style={styles.captureButton}
-                onPress={() =>
-                  navigation.navigate('WeighCapture', {
-                    entryId: item.id,
-                    vehicleNumber: item.vehicle_number,
-                    kind: nextKind,
-                  })
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`${actionLabel} ${item.vehicle_number}`}
+              style={styles.captureButton}
+              onPress={() => {
+                if (!nextKind) {
+                  navigation.navigate('EntryDetail', { entryId: item.id });
+                  return;
                 }
-              >
-                <Text style={styles.captureButtonText}>{actionLabel}</Text>
-              </TouchableOpacity>
-            ) : null}
+                navigation.navigate('WeighCapture', {
+                  entryId: item.id,
+                  vehicleNumber: item.vehicle_number,
+                  kind: nextKind,
+                });
+              }}
+            >
+              <Text style={styles.captureButtonText}>{actionLabel}</Text>
+            </TouchableOpacity>
           </View>
         );
       }}

@@ -1,11 +1,11 @@
 import React from 'react';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 // Path data taken verbatim from Google's Material Symbols Outlined set
 // (wght400 / FILL0 / GRAD0 / opsz24, https://fonts.google.com/icons), which is
 // Apache-2.0 licensed and safe to embed directly as vector paths. Keeping them
 // here avoids pulling in a font/icon-font linking step for five icons.
-const ICON_PATHS: Record<Exclude<TabBarIconName, 'qr_code_scanner'>, string> = {
+const ICON_PATHS: Record<TabBarIconName, string> = {
   dashboard:
     'M510-570v-270h330v270H510ZM120-450v-390h330v390H120Zm390 330v-390h330v390H510Zm-390 0v-270h330v270H120Zm60-390h210v-270H180v270Zm390 330h210v-270H570v270Zm0-450h210v-150H570v150ZM180-180h210v-150H180v150Zm210-330Zm180-120Zm0 180ZM390-330Z',
   meeting_room:
@@ -41,8 +41,7 @@ export type TabBarIconName =
   | 'verified_user'
   | 'group'
   | 'account_circle'
-  | 'settings'
-  | 'qr_code_scanner';
+  | 'settings';
 
 const DEFAULT_SIZE = 24;
 
@@ -55,28 +54,9 @@ interface TabBarIconProps {
 // Renders a single Material Symbols Outlined glyph at the requested size/tint,
 // matching the 24px / wght400 / opsz24 reference used across the GetPass tab bar.
 export function TabBarIcon({ name, color, size = DEFAULT_SIZE }: TabBarIconProps) {
-  if (name === 'qr_code_scanner') return <QrScannerGlyph color={color} size={size} />;
   return (
     <Svg width={size} height={size} viewBox="0 -960 960 960" fill={color}>
       <Path d={ICON_PATHS[name]} />
-    </Svg>
-  );
-}
-
-// A simple QR-frame glyph (three corner markers + a scan line), drawn with
-// basic shapes rather than a Material Symbols path, since this app doesn't
-// otherwise need that icon set's exact "qr_code_scanner" artwork.
-function QrScannerGlyph({ color, size }: { color: string; size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M3 8V5a2 2 0 0 1 2-2h3" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <Path d="M21 8V5a2 2 0 0 0-2-2h-3" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <Path d="M3 16v3a2 2 0 0 0 2 2h3" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <Path d="M21 16v3a2 2 0 0 1-2 2h-3" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <Rect x={7} y={7} width={3} height={3} fill={color} />
-      <Rect x={14} y={7} width={3} height={3} fill={color} />
-      <Rect x={7} y={14} width={3} height={3} fill={color} />
-      <Rect x={2} y={11.25} width={20} height={1.5} fill={color} />
     </Svg>
   );
 }
