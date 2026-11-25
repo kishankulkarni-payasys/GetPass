@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEntryList } from '../../queries/useEntryQueries';
@@ -8,6 +8,8 @@ import type { RootStackParamList } from '../../navigation/RootNavigator';
 import type { VehicleEntryOut, WeighmentKind } from '../../types/entries';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { background, insetSurfaceStyle, raisedSurface } from '../../theme/neumorphism';
+import { Text } from '../../components/LocalizedText';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Weighbridge'>;
 type ListScope = 'onSite' | 'all';
@@ -113,8 +115,8 @@ export default function WeighbridgeScreen({ navigation }: Props) {
         <View>
           {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
           <View style={styles.summary}>
-            <Text style={styles.summaryText}>{waitingForGross} vehicle(s) waiting for a gross weight</Text>
-            <Text style={styles.summaryText}>{waitingForTare} vehicle(s) waiting for an empty (tare) weight</Text>
+            <Text style={styles.summaryText}>{`${waitingForGross} vehicle(s) waiting for a gross weight`}</Text>
+            <Text style={styles.summaryText}>{`${waitingForTare} vehicle(s) waiting for an empty (tare) weight`}</Text>
           </View>
           <View style={styles.scopeControl}>
             <TouchableOpacity
@@ -207,24 +209,22 @@ export default function WeighbridgeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   listContent: { paddingBottom: 16 },
   summary: { paddingHorizontal: 9, paddingTop: 22, paddingBottom: 12, gap: 5 },
   summaryText: { color: '#15263a', fontSize: 12 },
   scopeControl: {
+    ...insetSurfaceStyle,
     flexDirection: 'row',
     marginHorizontal: 9,
     marginBottom: 11,
     padding: 4,
     borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
-    backgroundColor: '#f6f7f9',
   },
   scopeButton: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   scopeButtonActive: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     elevation: 2,
     shadowColor: '#263447',
     shadowOpacity: 0.12,
@@ -234,13 +234,11 @@ const styles = StyleSheet.create({
   scopeLabel: { color: '#25364a', fontSize: 12, fontWeight: '500' },
   scopeLabelActive: { color: '#b8410e', fontWeight: '700' },
   card: {
+    ...raisedSurface,
     marginHorizontal: 9,
     marginBottom: 11,
     padding: 14,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e5ea',
-    backgroundColor: '#fff',
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   vehicleInfo: { flex: 1 },

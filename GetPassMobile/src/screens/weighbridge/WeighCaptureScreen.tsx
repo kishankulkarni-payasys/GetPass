@@ -6,7 +6,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -24,6 +23,8 @@ import type { PhotoUploadAsset } from '../../api/entries';
 import { ErrorBanner, FieldLabel, Input } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { background, insetSurfaceStyle, raisedSurface } from '../../theme/neumorphism';
+import { Text } from '../../components/LocalizedText';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WeighCapture'>;
 type SelectOption<T extends string> = { value: T; label: string };
@@ -573,7 +574,7 @@ function WeightSummary({ label, value }: { label: string; value?: number | null 
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#0e1722' },
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   header: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0e1722', paddingHorizontal: 10, paddingVertical: 8 },
   headerInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   plate: { backgroundColor: '#facc15', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 },
@@ -588,15 +589,15 @@ const styles = StyleSheet.create({
   loadingArea: { minHeight: 280, alignItems: 'center', justifyContent: 'center' },
   retryButton: { alignSelf: 'center', backgroundColor: '#b8410e', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 10 },
   retryText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  indicatorNotice: { backgroundColor: '#f7f8fa', borderColor: '#dce2e8', borderWidth: 1, borderRadius: 10, padding: 11, marginBottom: 14 },
+  indicatorNotice: { ...raisedSurface, borderRadius: 12, padding: 11, marginBottom: 14 },
   indicatorText: { color: '#526171', fontSize: 12, lineHeight: 18 },
   indicatorAction: { color: '#b8410e', fontSize: 11, fontWeight: '700', marginTop: 6 },
-  formCard: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 10 },
-  selectField: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#dce2e8', backgroundColor: '#f7f8fa', borderRadius: 9, paddingHorizontal: 14 },
+  formCard: { ...raisedSurface, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 10 },
+  selectField: { ...insetSurfaceStyle, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 10, paddingHorizontal: 14 },
   selectText: { color: '#1d2938', fontSize: 14 },
   selectChevron: { color: '#526171', fontSize: 19, marginTop: -4 },
   modalOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.38)', padding: 24 },
-  modalCard: { width: '100%', maxWidth: 360, borderRadius: 12, backgroundColor: '#fff', padding: 8, elevation: 8 },
+  modalCard: { ...raisedSurface, width: '100%', maxWidth: 360, borderRadius: 14, padding: 8, elevation: 8 },
   modalOption: { paddingVertical: 14, paddingHorizontal: 12, borderRadius: 8 },
   modalOptionActive: { backgroundColor: '#fceee6' },
   modalOptionText: { color: '#15263a', fontSize: 14 },
@@ -610,14 +611,14 @@ const styles = StyleSheet.create({
   successMessage: { color: '#18734a', fontSize: 12, fontWeight: '600', marginBottom: 8, paddingHorizontal: 4 },
   photoMessage: { color: '#18734a', fontSize: 12, fontWeight: '600', marginBottom: 8, paddingHorizontal: 4 },
   summaryRow: { flexDirection: 'row', gap: 7, marginBottom: 14 },
-  summaryCard: { flex: 1, minHeight: 60, justifyContent: 'center', backgroundColor: '#fff', borderColor: '#dce2e8', borderWidth: 1, borderRadius: 9, paddingHorizontal: 7, paddingVertical: 8 },
+  summaryCard: { ...raisedSurface, flex: 1, minHeight: 60, justifyContent: 'center', borderRadius: 11, paddingHorizontal: 7, paddingVertical: 8 },
   summaryLabel: { color: '#526171', fontSize: 9, fontWeight: '600', marginBottom: 4 },
   summaryValue: { color: '#15263a', fontSize: 12, fontWeight: '700' },
-  section: { backgroundColor: '#fff', borderColor: '#dce2e8', borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 14 },
+  section: { ...raisedSurface, borderRadius: 12, padding: 12, marginBottom: 14 },
   sectionTitle: { color: '#15263a', fontSize: 16, fontWeight: '700', marginBottom: 10 },
   emptyText: { color: '#526171', fontSize: 12 },
   historyList: { gap: 7 },
-  historyItem: { backgroundColor: '#fff', borderColor: '#dce2e8', borderWidth: 1, borderRadius: 9, paddingHorizontal: 9, paddingVertical: 8 },
+  historyItem: { ...raisedSurface, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 8 },
   historyItemSuperseded: { opacity: 0.6 },
   historyMain: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
   historyKind: { color: '#34445a', fontSize: 11, fontWeight: '600' },
@@ -634,11 +635,11 @@ const styles = StyleSheet.create({
   photoSection: { marginBottom: 14 },
   photoDescription: { color: '#526171', fontSize: 11, marginTop: -5, marginBottom: 8 },
   photoActions: { gap: 6, marginBottom: 8 },
-  photoActionButton: { minHeight: 38, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderColor: '#dce2e8', borderWidth: 1, borderRadius: 9 },
+  photoActionButton: { ...raisedSurface, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
   photoActionText: { color: '#15263a', fontSize: 11, fontWeight: '700' },
   noPhotos: { color: '#526171', fontSize: 11, textAlign: 'center', backgroundColor: '#f7f8fa', padding: 16, borderRadius: 8 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoFrame: { width: '48%', height: 118, borderRadius: 8, borderWidth: 1, borderColor: '#dce2e8', overflow: 'hidden', backgroundColor: '#fff' },
+  photoFrame: { ...raisedSurface, width: '48%', height: 118, borderRadius: 9, overflow: 'hidden' },
   photoImage: { width: '100%', height: '100%' },
   photoLoading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   photoError: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 8, backgroundColor: '#fdeaea' },

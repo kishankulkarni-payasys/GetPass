@@ -1,8 +1,11 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { TabBarIcon, TabBarIconName } from '../components/icons/TabBarIcon';
+import { colors } from '../components/ui';
+import { Text } from '../components/LocalizedText';
+import { raisedSurface } from '../theme/neumorphism';
 import { getActionsForRole } from '../navigation/roleActions';
 import type { MainTabScreenProps } from '../navigation/TabNavigator';
 import type { UserRole } from '../types/auth';
@@ -166,10 +169,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.42)',
   },
   sheet: {
+    ...raisedSurface,
     height: '50%',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
   sheetHeader: {
@@ -185,17 +188,19 @@ const styles = StyleSheet.create({
   closeText: { color: '#475569', fontSize: 22, lineHeight: 24 },
   rows: { paddingHorizontal: 6, paddingBottom: 16 },
   row: {
+    ...raisedSurface,
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
+    marginBottom: 7,
   },
   rowSelected: { backgroundColor: '#fceee6' },
   rowLabel: { color: '#17202b', fontSize: 12, fontWeight: '500' },
   rowLabelSelected: { color: '#b8410e', fontWeight: '600' },
-  fallbackScreen: { flex: 1, backgroundColor: '#fff' },
+  fallbackScreen: { flex: 1, backgroundColor: colors.background },
   fallbackTitle: { color: '#17202b', fontSize: 18, fontWeight: '700', paddingHorizontal: 18, paddingVertical: 16 },
   fallbackRows: { paddingHorizontal: 8 },
 });

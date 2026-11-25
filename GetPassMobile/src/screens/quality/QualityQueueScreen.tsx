@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQualityQueue } from '../../queries/useQualityQueries';
@@ -8,6 +8,8 @@ import type { RootStackParamList } from '../../navigation/RootNavigator';
 import type { QualityQueueItem } from '../../types/quality';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { background, raisedSurface } from '../../theme/neumorphism';
+import { Text } from '../../components/LocalizedText';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QualityQueue'>;
 
@@ -176,20 +178,18 @@ export default function QualityQueueScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   list: { paddingHorizontal: 6, paddingTop: 18, paddingBottom: 24 },
   sectionTitle: { color: '#131a22', fontSize: 20, fontWeight: '700' },
   sectionHint: { color: '#526171', fontSize: 12, lineHeight: 17, marginTop: 3, marginBottom: 4 },
   emptyText: { color: '#526171', fontSize: 13, paddingVertical: 16 },
   card: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     marginTop: 10,
     marginBottom: 2,
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
   },
   cardOverSla: { borderColor: '#f1b8b8' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },

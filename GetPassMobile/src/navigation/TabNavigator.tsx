@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator, BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +16,7 @@ import MoreScreen, { MoreSectionsSheet } from '../screens/MoreScreen';
 import { colors } from '../components/ui';
 import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
 import { TabBarIcon, TabBarIconName } from '../components/icons/TabBarIcon';
+import { Text } from '../components/LocalizedText';
 
 // The bottom tabs for the authenticated area, matching the roles' existing allow-lists in
 // roleActions.ts (which itself mirrors Backend/app/auth.py's role gates). A tab only renders
@@ -39,10 +40,12 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 type Props = NativeStackScreenProps<RootStackParamList, 'Main'>;
 
 const HEADER_OPTIONS = {
-  headerStyle: { backgroundColor: '#fff' },
-  headerTintColor: '#131a22',
-  headerTitleStyle: { color: '#131a22', fontWeight: '700' as const },
+  headerStyle: { backgroundColor: colors.background },
+  headerTintColor: colors.text,
+  headerTitleStyle: { color: colors.text, fontWeight: '700' as const },
   headerTitleAlign: 'left' as const,
+  headerTitle: ({ children }: { children?: string }) => <Text>{children}</Text>,
+  headerShadowVisible: false,
   headerLeft: BrandHeaderMark,
   headerRight: BrandHeaderAvatar,
 };
@@ -122,6 +125,7 @@ export default function TabNavigator({ navigation }: Props) {
           ...HEADER_OPTIONS,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.muted,
+          tabBarStyle: styles.tabBar,
         }}
       >
         {showDashboard ? (
@@ -174,4 +178,13 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 11 },
   tabLabelFocused: { fontWeight: '700', color: colors.primary },
   tabLabelInactive: { fontWeight: '500', color: colors.muted },
+  tabBar: {
+    backgroundColor: colors.background,
+    borderTopColor: '#d8e0ea',
+    shadowColor: '#9aa7b8',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
+    elevation: 8,
+  },
 });

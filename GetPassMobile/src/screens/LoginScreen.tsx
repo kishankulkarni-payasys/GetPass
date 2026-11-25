@@ -5,13 +5,13 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
+import { insetSurfaceStyle, raisedSurface } from '../theme/neumorphism';
+import { Text, TextInput } from '../components/LocalizedText';
 
 // Mirrors Frontend/src/pages/LoginPage.jsx and its .login-* styles in
 // Frontend/src/index.css, adapted to native primitives and a single-column
@@ -44,19 +44,19 @@ const COPY = {
 // Color tokens lifted from Frontend/src/index.css (--gp-* custom properties)
 // so the mobile screen matches the web app's palette exactly.
 const PALETTE = {
-  control: '#0e1620',
-  onControl: '#c4d0db',
-  onControlMuted: '#9fb0bf',
-  accent: '#e85d1f',
+  control: '#e9edf4',
+  onControl: '#34445a',
+  onControlMuted: '#657386',
+  accent: '#c54b1b',
   accentInk: '#b8410e',
   accentStrong: '#9a360b',
   accentWash: '#fceee6',
-  focus: '#f3b48e',
-  surface: '#fff',
-  ink: '#131a22',
-  ink2: '#44515f',
-  line: '#dce2e8',
-  line2: '#e8ecf0',
+  focus: '#b8410e',
+  surface: '#e9edf4',
+  ink: '#17202b',
+  ink2: '#526171',
+  line: '#d8e0ea',
+  line2: '#fff',
   checkWash: 'rgba(232, 93, 31, 0.18)',
 };
 
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   brandMarkText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  brandText: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: -0.5 },
+  brandText: { color: PALETTE.ink, fontSize: 18, fontWeight: '700', letterSpacing: -0.5 },
   brandTextAccent: { color: PALETTE.accent },
   headerLabel: {
     color: PALETTE.onControlMuted,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     textTransform: 'uppercase',
   },
-  headline: { color: '#fff', fontSize: 34, fontWeight: '700', letterSpacing: -1, lineHeight: 38, marginTop: 10, marginBottom: 14 },
+  headline: { color: PALETTE.ink, fontSize: 34, fontWeight: '700', letterSpacing: -1, lineHeight: 38, marginTop: 10, marginBottom: 14 },
   headlineAccent: { color: PALETTE.focus },
   introText: { color: PALETTE.onControl, fontSize: 15, lineHeight: 23 },
   featureList: { marginTop: 20, gap: 12 },
@@ -253,10 +253,9 @@ const styles = StyleSheet.create({
   featureCheckText: { color: PALETTE.focus, fontSize: 11, fontWeight: '700' },
   featureText: { color: PALETTE.onControl, fontSize: 13 },
   card: {
+    ...raisedSurface,
     backgroundColor: PALETTE.surface,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: PALETTE.line,
     padding: 20,
   },
   cardIcon: {
@@ -282,10 +281,8 @@ const styles = StyleSheet.create({
   form: { gap: 6 },
   fieldLabel: { color: PALETTE.ink2, fontSize: 12, fontWeight: '600', marginTop: 6 },
   input: {
-    backgroundColor: '#fff',
+    ...insetSurfaceStyle,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: PALETTE.line,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,

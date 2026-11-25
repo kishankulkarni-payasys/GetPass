@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   TextStyle,
   TouchableOpacity,
   View,
@@ -21,6 +20,9 @@ import { PassState, PassType, VehicleEntryOut } from '../../types/entries';
 import { EmptyState, ErrorBanner, Input, LoadingView } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { background, insetSurfaceStyle, raisedSurface } from '../../theme/neumorphism';
+import { Text } from '../../components/LocalizedText';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EntryList'>;
 type Tone = 'good' | 'warn' | 'crit' | 'info' | 'neutral';
@@ -32,7 +34,7 @@ const STATUS_TONE_STYLES: Record<Tone, ViewStyle> = {
   warn: { backgroundColor: '#f8f0da' },
   crit: { backgroundColor: '#fdeaea' },
   info: { backgroundColor: '#e9f1fb' },
-  neutral: { backgroundColor: '#eef1f5' },
+  neutral: { backgroundColor: background },
 };
 
 const STATUS_DOT_TONE_STYLES: Record<Tone, ViewStyle> = {
@@ -373,6 +375,7 @@ function GateOutCard({
 }
 
 export default function EntryListScreen({ route, navigation }: Props) {
+  const { t } = useLanguage();
   const mode = route.params?.mode ?? 'open';
   const [search, setSearch] = useState('');
   const [passTypeFilter, setPassTypeFilter] = useState<PassType | ''>('');
@@ -431,7 +434,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
         entryId: entry.id,
         payload: { rejected_material_on_vehicle: rejectedMaterialOnVehicle },
       });
-      Alert.alert('Gate-out complete', `${entry.vehicle_number} has been let out.`);
+      Alert.alert(t('Gate-out complete'), t(`${entry.vehicle_number} has been let out.`));
     } catch (error) {
       setActionError(extractErrorMessage(error, 'Failed to let the vehicle out.'));
     } finally {
@@ -449,14 +452,14 @@ export default function EntryListScreen({ route, navigation }: Props) {
       const rejectedQuantity = detail?.grn?.total_rejected_qty ?? 0;
       const hasRejectedMaterial = rejectedQuantity > 0;
       Alert.alert(
-        hasRejectedMaterial ? 'Rejected material on board' : 'Confirm gate-out',
-        hasRejectedMaterial
+        t(hasRejectedMaterial ? 'Rejected material on board' : 'Confirm gate-out'),
+        t(hasRejectedMaterial
           ? `${rejectedQuantity} rejected material is recorded. Confirm it remains on this vehicle before letting it out.`
-          : `Record ${entry.vehicle_number} as exited from the site?`,
+          : `Record ${entry.vehicle_number} as exited from the site?`),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('Cancel'), style: 'cancel' },
           {
-            text: hasRejectedMaterial ? 'Confirm and let out' : 'Let out',
+            text: t(hasRejectedMaterial ? 'Confirm and let out' : 'Let out'),
             onPress: () => submitGateOut(entry, hasRejectedMaterial),
           },
         ],
@@ -633,7 +636,7 @@ export default function EntryListScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   listContent: { paddingBottom: 24 },
   gateOutHeader: { paddingHorizontal: 8, paddingTop: 18, paddingBottom: 4 },
@@ -645,10 +648,8 @@ const styles = StyleSheet.create({
   atGateTitle: { color: '#131a22', fontSize: 16, fontWeight: '700', marginBottom: 4 },
   atGateHint: { color: '#526171', fontSize: 12, lineHeight: 17, marginBottom: 4 },
   searchCard: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     padding: 14,
     marginHorizontal: 5,
     marginTop: 10,
@@ -656,15 +657,13 @@ const styles = StyleSheet.create({
   searchInput: { minHeight: 44, fontSize: 13, borderRadius: 8, paddingVertical: 10 },
   searchActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
   actionButton: {
+    ...raisedSurface,
     minHeight: 40,
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 9,
   },
   actionIcon: { color: '#334155', fontSize: 17, fontWeight: '700' },
@@ -686,32 +685,28 @@ const styles = StyleSheet.create({
   filterField: { flex: 1, minWidth: 0 },
   filterLabel: { color: '#526171', fontSize: 12, marginBottom: 4 },
   select: {
+    ...insetSurfaceStyle,
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
-    backgroundColor: '#eef1f5',
   },
   selectText: { color: '#17202b', fontSize: 13 },
   selectChevron: { color: '#17202b', fontSize: 16 },
   modalBackdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(15, 23, 42, 0.35)' },
-  modalCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, elevation: 8 },
+  modalCard: { ...raisedSurface, borderRadius: 14, padding: 16, elevation: 8 },
   modalTitle: { color: '#131a22', fontSize: 16, fontWeight: '700', marginBottom: 8 },
   modalOption: { minHeight: 44, justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#eef1f5' },
   modalOptionText: { color: '#334155', fontSize: 14 },
   modalOptionSelected: { color: '#b8410e', fontWeight: '700' },
   card: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     marginHorizontal: 5,
     marginTop: 10,
     borderRadius: 10,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   cardHeading: { flex: 1, minWidth: 0 },
@@ -740,11 +735,10 @@ const styles = StyleSheet.create({
   pending: { color: '#a77916' },
   netWeight: { color: '#17202b', fontWeight: '700' },
   openButton: {
+    ...raisedSurface,
     minHeight: 34,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 8,
   },
   openButtonText: { color: '#17202b', fontSize: 12, fontWeight: '600' },

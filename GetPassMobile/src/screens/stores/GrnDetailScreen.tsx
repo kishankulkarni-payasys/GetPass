@@ -5,7 +5,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +17,8 @@ import { ErrorBanner, FieldLabel, Input, LoadingView } from '../../components/ui
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import type { GrnLineOut } from '../../types/grn';
 import { extractErrorMessage } from '../../utils/apiError';
+import { background, raisedSurface } from '../../theme/neumorphism';
+import { Text } from '../../components/LocalizedText';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GrnDetail'>;
 
@@ -405,11 +406,11 @@ export default function GrnDetailScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   scrollView: { flex: 1 },
   content: { paddingHorizontal: 6, paddingTop: 16, paddingBottom: 16 },
-  errorScreen: { flex: 1, justifyContent: 'center', backgroundColor: '#eef1f5' },
+  errorScreen: { flex: 1, justifyContent: 'center', backgroundColor: background },
   retryLoadButton: { alignSelf: 'center', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, backgroundColor: '#b8410e' },
   retryLoadText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   backLink: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8 },
@@ -438,7 +439,7 @@ const styles = StyleSheet.create({
   returnPassBanner: { backgroundColor: '#f8f0da', marginHorizontal: 8, marginBottom: 8, padding: 10, borderRadius: 8 },
   returnPassText: { color: '#80600f', fontSize: 12, fontWeight: '600' },
   factsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 2, marginBottom: 6 },
-  factCard: { flexGrow: 1, flexBasis: '47%', minHeight: 58, justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#dce2e8', borderRadius: 10, paddingHorizontal: 11, paddingVertical: 8 },
+  factCard: { ...raisedSurface, flexGrow: 1, flexBasis: '47%', minHeight: 58, justifyContent: 'center', borderRadius: 12, paddingHorizontal: 11, paddingVertical: 8 },
   factLabel: { color: '#34445a', fontSize: 10, fontWeight: '500', marginBottom: 4 },
   factValue: { color: '#15263a', fontSize: 13, fontWeight: '700' },
   qualityBadge: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4 },
@@ -451,7 +452,7 @@ const styles = StyleSheet.create({
   qualityPartialText: { color: '#80600f' },
   qualityRejectedText: { color: '#a83227' },
   qualityMissingText: { color: '#526171' },
-  lineCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#dce2e8', borderRadius: 11, padding: 12, marginHorizontal: 2, marginTop: 8 },
+  lineCard: { ...raisedSurface, borderRadius: 12, padding: 12, marginHorizontal: 2, marginTop: 8 },
   lineTitle: { color: '#15263a', fontSize: 14, fontWeight: '700' },
   lineUnit: { fontSize: 11, fontWeight: '400' },
   lineFacts: { flexDirection: 'row', gap: 12, marginTop: 10 },
@@ -463,11 +464,11 @@ const styles = StyleSheet.create({
   quantityInput: { height: 40, minHeight: 40, paddingHorizontal: 8, paddingVertical: 4, fontSize: 12, textAlign: 'right', borderColor: '#dce2e8' },
   flagText: { color: '#80600f', fontSize: 10, marginTop: 7 },
   remarksInput: { minHeight: 40, paddingVertical: 8, fontSize: 12 },
-  footer: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#dce2e8', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12, elevation: 8 },
+  footer: { backgroundColor: background, borderTopWidth: 1, borderTopColor: '#d8e0ea', paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12, elevation: 8 },
   sodNotice: { color: '#526171', fontSize: 10, lineHeight: 15, marginBottom: 8 },
   sodStrong: { color: '#15263a', fontWeight: '700' },
   footerButtons: { flexDirection: 'row', gap: 8 },
-  saveButton: { flex: 0.8, minHeight: 42, borderRadius: 9, borderWidth: 1, borderColor: '#dce2e8', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  saveButton: { ...raisedSurface, flex: 0.8, minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   saveButtonText: { color: '#15263a', fontSize: 11, fontWeight: '700' },
   approveButton: { flex: 1.2, minHeight: 42, borderRadius: 9, backgroundColor: '#b8410e', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   approveButtonText: { color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' },

@@ -1,6 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
+import { Text } from './LocalizedText';
+import { raisedSurface } from '../theme/neumorphism';
 
 export function BrandHeaderMark() {
   return (
@@ -30,6 +32,7 @@ export function BrandHeaderAvatar() {
 
 const styles = StyleSheet.create({
   mark: {
+    ...raisedSurface,
     width: 32,
     height: 32,
     alignItems: 'center',
@@ -40,12 +43,12 @@ const styles = StyleSheet.create({
   },
   markText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   avatar: {
+    ...raisedSurface,
     width: 32,
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
-    backgroundColor: '#fceee6',
     marginRight: 4,
   },
   avatarText: { color: '#b8410e', fontSize: 11, fontWeight: '700' },

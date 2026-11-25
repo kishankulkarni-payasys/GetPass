@@ -17,6 +17,8 @@ import AccountScreen from '../screens/AccountScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { BrandHeaderAvatar, BrandHeaderMark } from '../components/BrandHeader';
 import type { WeighmentKind } from '../types/entries';
+import { colors } from '../components/ui';
+import { Text } from '../components/LocalizedText';
 
 // The authenticated area now lives behind a bottom tab navigator (see TabNavigator.tsx,
 // rendered here as the "Main" screen). Screens that need to push on top of the tabs
@@ -41,10 +43,15 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const HEADER_OPTIONS = {
-  headerStyle: { backgroundColor: '#1a1a2e' },
-  headerTintColor: '#fff',
-  headerTitleStyle: { fontWeight: '700' as const },
+  headerStyle: { backgroundColor: colors.background },
+  headerTintColor: colors.text,
+  headerTitleStyle: { color: colors.text, fontWeight: '700' as const },
+  headerShadowVisible: false,
 };
+
+function TranslatedHeaderTitle({ children }: { children?: string }) {
+  return <Text>{children}</Text>;
+}
 
 export default function RootNavigator() {
   const { user, isLoading } = useAuth();
@@ -59,7 +66,12 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          headerTitle: TranslatedHeaderTitle,
+        }}
+      >
         {user ? (
           <>
             <Stack.Screen name="Main" component={TabNavigator} />
@@ -69,10 +81,11 @@ export default function RootNavigator() {
               options={({ route }) => ({
                 headerShown: true,
                 title: route.params?.mode === 'all' ? 'Entry Log' : 'Gate-out',
-                headerStyle: { backgroundColor: '#fff' },
-                headerTintColor: '#131a22',
-                headerTitleStyle: { color: '#131a22', fontWeight: '700' as const },
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.text,
+                headerTitleStyle: { color: colors.text, fontWeight: '700' as const },
                 headerTitleAlign: 'left' as const,
+                headerShadowVisible: false,
                 headerBackVisible: false,
                 headerLeft: BrandHeaderMark,
                 headerRight: BrandHeaderAvatar,
@@ -84,10 +97,11 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Pass details',
-                headerStyle: { backgroundColor: '#fff' },
-                headerTintColor: '#131a22',
-                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.text,
+                headerTitleStyle: { color: colors.text, fontWeight: '700' },
                 headerTitleAlign: 'left',
+                headerShadowVisible: false,
                 headerRight: BrandHeaderAvatar,
               }}
             />
@@ -97,10 +111,11 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Weighbridge',
-                headerStyle: { backgroundColor: '#fff' },
-                headerTintColor: '#131a22',
-                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.text,
+                headerTitleStyle: { color: colors.text, fontWeight: '700' },
                 headerTitleAlign: 'left',
+                headerShadowVisible: false,
                 headerLeft: BrandHeaderMark,
                 headerRight: BrandHeaderAvatar,
               }}
@@ -112,10 +127,11 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Quality',
-                headerStyle: { backgroundColor: '#fff' },
-                headerTintColor: '#131a22',
-                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.text,
+                headerTitleStyle: { color: colors.text, fontWeight: '700' },
                 headerTitleAlign: 'left',
+                headerShadowVisible: false,
                 headerLeft: BrandHeaderMark,
                 headerRight: BrandHeaderAvatar,
               }}
@@ -127,10 +143,11 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Stores / GRN',
-                headerStyle: { backgroundColor: '#fff' },
-                headerTintColor: '#131a22',
-                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.text,
+                headerTitleStyle: { color: colors.text, fontWeight: '700' },
                 headerTitleAlign: 'left',
+                headerShadowVisible: false,
                 headerRight: BrandHeaderAvatar,
               }}
             />
@@ -140,10 +157,11 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Users',
-                headerStyle: { backgroundColor: '#fff' },
-                headerTintColor: '#131a22',
-                headerTitleStyle: { color: '#131a22', fontWeight: '700' },
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.text,
+                headerTitleStyle: { color: colors.text, fontWeight: '700' },
                 headerTitleAlign: 'left',
+                headerShadowVisible: false,
                 headerBackVisible: false,
                 headerLeft: BrandHeaderMark,
                 headerRight: BrandHeaderAvatar,

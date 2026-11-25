@@ -6,7 +6,6 @@ import {
   Modal,
   RefreshControl,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,6 +16,9 @@ import { ErrorBanner, FieldLabel, Input, LoadingView } from '../components/ui';
 import { UserRole } from '../types/auth';
 import { UserOut } from '../types/users';
 import { extractErrorMessage } from '../utils/apiError';
+import { background, insetSurfaceStyle, raisedSurface } from '../theme/neumorphism';
+import { Text } from '../components/LocalizedText';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const ROLE_OPTIONS: UserRole[] = [
   'admin',
@@ -164,6 +166,7 @@ function UserCard({
 }
 
 export default function UsersScreen() {
+  const { t } = useLanguage();
   const { user: currentUser } = useAuth();
   const { data: fetchedUsers, isLoading, isRefetching: isRefreshing, error: loadError, refetch } = useUserList();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -221,11 +224,11 @@ export default function UsersScreen() {
 
   function confirmDelete(target: UserOut) {
     Alert.alert(
-      'Delete user?',
-      `Delete ${target.full_name}? This cannot be undone.`,
+      t('Delete user?'),
+      t(`Delete ${target.full_name}? This cannot be undone.`),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => { performDelete(target); } },
+        { text: t('Cancel'), style: 'cancel' },
+        { text: t('Delete'), style: 'destructive', onPress: () => { performDelete(target); } },
       ],
     );
   }
@@ -309,7 +312,7 @@ export default function UsersScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   list: { paddingHorizontal: 10, paddingBottom: 24 },
   addButton: {
@@ -322,10 +325,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  createCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#dce2e8', padding: 14, marginBottom: 12 },
+  createCard: { ...raisedSurface, borderRadius: 14, padding: 14, marginBottom: 12 },
   createTitle: { color: '#15263a', fontSize: 15, fontWeight: '700', marginBottom: 4 },
   createSubmitButton: { marginTop: 14, marginBottom: 0 },
-  userCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#dce2e8', padding: 14, marginBottom: 12 },
+  userCard: { ...raisedSurface, borderRadius: 14, padding: 14, marginBottom: 12 },
   userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   identity: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingRight: 8 },
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fceee6', alignItems: 'center', justifyContent: 'center' },
@@ -341,13 +344,11 @@ const styles = StyleSheet.create({
   inactiveBadge: { backgroundColor: '#eef1f5' },
   inactiveBadgeText: { color: '#526171' },
   roleSelect: {
+    ...insetSurfaceStyle,
     height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 8,
     paddingHorizontal: 14,
   },
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
   disabledText: { color: '#7b8590' },
   emptyText: { color: '#526171', fontSize: 12, textAlign: 'center', paddingVertical: 18 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 24 },
-  roleModal: { backgroundColor: '#fff', borderRadius: 14, padding: 16, elevation: 8 },
+  roleModal: { ...raisedSurface, borderRadius: 16, padding: 16, elevation: 8 },
   roleModalTitle: { color: '#15263a', fontSize: 15, fontWeight: '700', marginBottom: 10 },
   roleOption: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 10 },
   roleOptionSelected: { backgroundColor: '#fceee6' },

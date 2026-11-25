@@ -5,7 +5,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,6 +16,8 @@ import { DashboardRow, Tone } from '../types/dashboard';
 import { EmptyState, ErrorBanner, Input, LoadingView } from '../components/ui';
 import { extractErrorMessage } from '../utils/apiError';
 import { formatPlate } from '../utils/formatPlate';
+import { background, insetSurfaceStyle, raisedSurface } from '../theme/neumorphism';
+import { Text } from '../components/LocalizedText';
 
 type Props = MainTabScreenProps<'DashboardTab'>;
 
@@ -25,7 +26,7 @@ const TONE_STYLES: Record<Tone, { backgroundColor: string; color: string }> = {
   warn: { backgroundColor: '#f8f0da', color: '#80600f' },
   crit: { backgroundColor: '#fdeaea', color: '#a83227' },
   info: { backgroundColor: '#e9f1fb', color: '#2457a6' },
-  neutral: { backgroundColor: '#eef1f5', color: '#475569' },
+  neutral: { backgroundColor: background, color: '#475569' },
 };
 
 function localToday(): string {
@@ -285,7 +286,7 @@ export default function DashboardScreen({ navigation }: Props) {
             <View style={styles.boardHeading}>
               <Text style={styles.boardTitle}>Vehicle board</Text>
               <Text style={styles.boardHint}>
-                Open passes first, longest on site first. Dwell turns red after {summary.dwell_sla_minutes} minutes.
+                {`Open passes first, longest on site first. Dwell turns red after ${summary.dwell_sla_minutes} minutes.`}
               </Text>
             </View>
           </View>
@@ -310,7 +311,7 @@ export default function DashboardScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   loadError: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   list: { paddingBottom: 24 },
@@ -318,6 +319,7 @@ const styles = StyleSheet.create({
   fieldLabel: { color: '#526171', fontSize: 12, marginBottom: 4 },
   toolbarControls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   dateControl: {
+    ...insetSurfaceStyle,
     flex: 1,
     minHeight: 44,
     flexDirection: 'row',
@@ -325,22 +327,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     borderRadius: 9,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
-    backgroundColor: '#eef1f5',
   },
   dateText: { color: '#17202b', fontSize: 12 },
   calendarIcon: { color: '#17202b', fontSize: 17 },
   refreshButton: {
+    ...raisedSurface,
     minHeight: 44,
     minWidth: 78,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 9,
-    backgroundColor: '#fff',
   },
   refreshButtonDisabled: { opacity: 0.6 },
   refreshButtonText: { color: '#17202b', fontSize: 13, fontWeight: '700' },
@@ -355,14 +352,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   kpi: {
+    ...raisedSurface,
     width: '48%',
     minHeight: 92,
     justifyContent: 'center',
     padding: 12,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 10,
-    backgroundColor: '#fff',
   },
   kpiAlert: { backgroundColor: '#fae8e8', borderColor: '#f1caca' },
   kpiValue: { color: '#17202b', fontSize: 26, fontWeight: '800', lineHeight: 30 },
@@ -373,13 +368,11 @@ const styles = StyleSheet.create({
   boardTitle: { color: '#17202b', fontSize: 20, fontWeight: '700' },
   boardHint: { color: '#526171', fontSize: 12, lineHeight: 17, marginTop: 4, marginBottom: 6 },
   boardCard: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     marginHorizontal: 2,
     marginTop: 10,
     borderRadius: 11,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
   },
   boardCardAlert: { backgroundColor: '#fff5f5', borderColor: '#f1caca' },
   boardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
@@ -413,11 +406,11 @@ const styles = StyleSheet.create({
   },
   openButtonText: { color: '#17202b', fontSize: 12, fontWeight: '600' },
   modalBackdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(15, 23, 42, 0.35)' },
-  modalCard: { backgroundColor: '#fff', borderRadius: 12, padding: 18, elevation: 8 },
+  modalCard: { ...raisedSurface, borderRadius: 14, padding: 18, elevation: 8 },
   modalTitle: { color: '#17202b', fontSize: 17, fontWeight: '700', marginBottom: 12 },
   dateError: { color: '#b83232', fontSize: 12, marginTop: 6 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 16 },
-  modalSecondaryButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#eef1f5' },
+  modalSecondaryButton: { ...raisedSurface, minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 9 },
   modalSecondaryText: { color: '#17202b', fontSize: 13, fontWeight: '600' },
   modalPrimaryButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#b8410e' },
   modalPrimaryText: { color: '#fff', fontSize: 13, fontWeight: '700' },

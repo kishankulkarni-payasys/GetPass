@@ -5,8 +5,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +16,8 @@ import { usePutQualityResult } from '../../queries/useQualityQueries';
 import { ErrorBanner, LoadingView } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { background, insetSurfaceStyle, raisedSurface } from '../../theme/neumorphism';
+import { Text, TextInput } from '../../components/LocalizedText';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QualityResult'>;
 
@@ -203,7 +203,7 @@ export default function QualityResultScreen({ route, navigation }: Props) {
                 </View>
                 {quantityMismatch ? (
                   <Text style={styles.mismatchText}>
-                    Accepted + rejected is {(toThousandths(line.acceptedQty) + toThousandths(line.rejectedQty)) / QUANTITY_SCALE}, the challan says {line.challanQty}.
+                    {`Accepted + rejected is ${(toThousandths(line.acceptedQty) + toThousandths(line.rejectedQty)) / QUANTITY_SCALE}, the challan says ${line.challanQty}.`}
                   </Text>
                 ) : null}
 
@@ -285,7 +285,7 @@ export default function QualityResultScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   header: {
     minHeight: 80,
@@ -319,14 +319,12 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 0, paddingTop: 16, paddingBottom: 18 },
   subtitle: { color: '#455363', fontSize: 12, marginBottom: 14, paddingHorizontal: 0 },
   lineCard: {
-    borderWidth: 1,
-    borderColor: '#dce2e8',
+    ...raisedSurface,
     borderRadius: 11,
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 14,
     marginBottom: 14,
-    backgroundColor: '#eef1f5',
   },
   lineTitle: { color: '#171f29', fontSize: 18, fontWeight: '700', marginBottom: 22 },
   challanQty: { color: '#526171', fontSize: 11, marginBottom: 12 },
@@ -335,9 +333,8 @@ const styles = StyleSheet.create({
   qtyField: { flex: 1, minWidth: 0 },
   fieldLabel: { color: '#526171', fontSize: 11, marginBottom: 5, marginTop: 4 },
   quantityInput: {
+    ...insetSurfaceStyle,
     height: 46,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 7,
     paddingHorizontal: 12,
     color: '#17202b',
@@ -349,16 +346,15 @@ const styles = StyleSheet.create({
   invalidText: { color: '#a83227', fontSize: 10, marginTop: 3 },
   mismatchText: { color: '#80600f', fontSize: 11, marginTop: 8 },
   remarksInput: {
+    ...insetSurfaceStyle,
     height: 46,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 7,
     paddingHorizontal: 10,
     paddingVertical: 8,
     color: '#17202b',
     backgroundColor: 'transparent',
   },
-  resultCard: { backgroundColor: '#f8f9fa', borderRadius: 11, padding: 14, marginBottom: 16 },
+  resultCard: { ...raisedSurface, borderRadius: 14, padding: 14, marginBottom: 16 },
   resultHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   resultTitle: { color: '#171f29', fontSize: 13, fontWeight: '700' },
   resultBadge: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4 },
@@ -372,9 +368,8 @@ const styles = StyleSheet.create({
   waitingResult: { color: '#526171', fontSize: 11 },
   resultHint: { color: '#526171', fontSize: 11, lineHeight: 16, marginTop: 5 },
   overallRemarks: {
+    ...insetSurfaceStyle,
     minHeight: 54,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     borderRadius: 7,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -389,10 +384,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     borderTopWidth: 1,
     borderTopColor: '#dce2e8',
-    backgroundColor: '#fff',
+    backgroundColor: background,
   },
   footerButton: { minHeight: 46, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
-  cancelButton: { borderWidth: 1, borderColor: '#cbd2da', backgroundColor: '#fff' },
+  cancelButton: { ...raisedSurface },
   cancelButtonText: { color: '#263342', fontSize: 13, fontWeight: '700' },
   submitButton: { backgroundColor: '#a73508' },
   submitButtonDisabled: { opacity: 0.55 },

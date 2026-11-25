@@ -2,23 +2,22 @@ import React from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
-  TextInput,
   TextInputProps,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { background, insetSurfaceStyle, raisedSurface } from '../theme/neumorphism';
+import { Text, TextInput } from './LocalizedText';
 
-// Shared visual language for the GetPass mobile screens: matches the dark navy /
-// white-card look of MoreScreen and LoginScreen so new screens don't invent a new style.
+// Shared visual language for the GetPass mobile screens.
 export const colors = {
-  background: '#f5f6fa',
-  card: '#fff',
-  border: '#eee',
-  text: '#1a1a2e',
-  subtext: '#666',
-  muted: '#888',
-  primary: '#1a1a2e',
+  background,
+  card: background,
+  border: '#d8e0ea',
+  text: '#17202b',
+  subtext: '#526171',
+  muted: '#718096',
+  primary: '#b8410e',
   danger: '#c0392b',
   success: '#1e8e5a',
   warn: '#b8860b',
@@ -98,7 +97,7 @@ export function Pill({ label, tone = 'neutral' }: { label: string; tone?: keyof 
 }
 
 const pillTones = StyleSheet.create({
-  neutral: { backgroundColor: '#eee' },
+  neutral: { backgroundColor: colors.background },
   good: { backgroundColor: colors.success },
   warn: { backgroundColor: colors.warn },
   crit: { backgroundColor: colors.danger },
@@ -106,9 +105,9 @@ const pillTones = StyleSheet.create({
 });
 
 const buttonVariantStyles = StyleSheet.create({
-  primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: colors.primary },
-  danger: { backgroundColor: colors.danger },
+  primary: { backgroundColor: colors.primary, shadowColor: '#8f3510', shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
+  secondary: { ...raisedSurface, borderColor: '#d8e0ea' },
+  danger: { backgroundColor: colors.danger, shadowColor: '#6f2424', shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
 });
 
 const styles = StyleSheet.create({
@@ -124,7 +123,7 @@ const styles = StyleSheet.create({
   },
   errorText: { color: colors.danger, fontSize: 14 },
   button: {
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -133,23 +132,19 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   buttonTextSecondary: { color: colors.primary },
   card: {
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...raisedSurface,
+    borderRadius: 14,
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 12,
   },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: colors.subtext, marginBottom: 6, marginTop: 10 },
   input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    ...insetSurfaceStyle,
+    borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
     color: colors.text,
   },
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start' },

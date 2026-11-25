@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiBaseUrl } from '../../config/env';
@@ -9,10 +9,12 @@ import { useStartGrn } from '../../queries/useGrnQueries';
 import { useSendToQuality } from '../../queries/useQualityQueries';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorBanner, FieldLabel, Input, LoadingView } from '../../components/ui';
+import { Text } from '../../components/LocalizedText';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import type { AuditOut, PassDetailOut, PassState, PhotoOut, WeighmentOut } from '../../types/entries';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { background, insetSurfaceStyle, raisedSurface } from '../../theme/neumorphism';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EntryDetail'>;
 type Tone = 'good' | 'warn' | 'crit' | 'neutral';
@@ -694,7 +696,7 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   content: { paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24 },
   passHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
@@ -722,12 +724,12 @@ const styles = StyleSheet.create({
   statusTextWarn: { color: '#80600f' },
   statusTextCrit: { color: '#a83227' },
   statusTextNeutral: { color: '#475569' },
-  journeyCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#dce2e8', padding: 14, marginBottom: 14 },
+  journeyCard: { ...raisedSurface, borderRadius: 14, padding: 14, marginBottom: 14 },
   stepRow: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
   stepDone: { backgroundColor: '#e8f5ed', borderColor: '#14a065' },
   stepGate: { backgroundColor: '#b83232', borderColor: '#b83232' },
-  stepCurrent: { backgroundColor: '#fff', borderColor: '#b8410e' },
+  stepCurrent: { backgroundColor: '#e9edf4', borderColor: '#b8410e' },
   stepTodo: { backgroundColor: '#f5f7f9', borderColor: '#d7dee6' },
   stepNumber: { color: '#34445a', fontSize: 11, fontWeight: '700' },
   stepNumberLight: { color: '#fff' },
@@ -735,26 +737,26 @@ const styles = StyleSheet.create({
   stepLabelDone: { color: '#24364b' },
   stepStatus: { color: '#64748b', fontSize: 10 },
   stepStatusGate: { color: '#b83232', fontWeight: '700' },
-  cancelledBanner: { backgroundColor: '#eef1f5', borderRadius: 10, padding: 12, marginBottom: 14 },
+  cancelledBanner: { ...insetSurfaceStyle, borderRadius: 10, padding: 12, marginBottom: 14 },
   cancelledText: { color: '#475569', fontSize: 12 },
   actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   actionButton: { flexGrow: 1, flexBasis: '46%', minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingHorizontal: 10, paddingVertical: 8 },
   actionPrimary: { backgroundColor: '#b8410e' },
-  actionSecondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#dce2e8' },
+  actionSecondary: { ...raisedSurface },
   actionDanger: { backgroundColor: '#c0392b' },
   actionDisabled: { opacity: 0.55 },
   actionText: { color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' },
   actionTextSecondary: { color: '#131a22' },
-  section: { backgroundColor: '#fff', borderRadius: 11, borderWidth: 1, borderColor: '#dce2e8', padding: 14, marginBottom: 12 },
+  section: { ...raisedSurface, borderRadius: 14, padding: 14, marginBottom: 12 },
   sectionTitle: { color: '#15263a', fontSize: 14, fontWeight: '700', marginBottom: 10 },
-  documentFact: { minHeight: 54, justifyContent: 'center', borderWidth: 1, borderColor: '#dce2e8', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 8 },
+  documentFact: { ...insetSurfaceStyle, minHeight: 54, justifyContent: 'center', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 8 },
   documentLabel: { color: '#34445a', fontSize: 10, marginBottom: 4 },
   documentValue: { color: '#15263a', fontSize: 13, fontWeight: '700' },
   documentBadge: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   documentBadgeText: { fontSize: 9, fontWeight: '700' },
   emptyText: { color: '#526171', fontSize: 12 },
   weighmentHistory: { marginTop: 8 },
-  weighmentItem: { borderWidth: 1, borderColor: '#dce2e8', borderRadius: 9, padding: 10, marginTop: 8 },
+  weighmentItem: { ...raisedSurface, borderRadius: 10, padding: 10, marginTop: 8 },
   weighmentSuperseded: { opacity: 0.6 },
   weighmentHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   weighmentKind: { color: '#15263a', fontSize: 12, fontWeight: '700' },
@@ -767,8 +769,8 @@ const styles = StyleSheet.create({
   weighmentMeta: { color: '#526171', fontSize: 10, marginTop: 5 },
   weighmentReason: { color: '#526171', fontSize: 10, marginTop: 3 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoCard: { flexGrow: 1, flexBasis: '47%', overflow: 'hidden', borderWidth: 1, borderColor: '#dce2e8', borderRadius: 9, padding: 6 },
-  photoImage: { width: '100%', height: 110, borderRadius: 5, backgroundColor: '#eef1f5' },
+  photoCard: { ...raisedSurface, flexGrow: 1, flexBasis: '47%', overflow: 'hidden', borderRadius: 10, padding: 6 },
+  photoImage: { width: '100%', height: 110, borderRadius: 5, backgroundColor: background },
   photoLoading: { height: 110, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f7f9', borderRadius: 5 },
   photoError: { height: 110, alignItems: 'center', justifyContent: 'center', padding: 8, backgroundColor: '#fdeaea', borderRadius: 5 },
   photoErrorText: { color: '#a83227', fontSize: 10, textAlign: 'center' },

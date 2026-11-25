@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/TabNavigator';
 import { useGrnWorkList, useRetryGrnPost, useStartGrn } from '../../queries/useGrnQueries';
@@ -8,6 +8,8 @@ import { GrnWorkGroup, GrnWorkItem } from '../../types/grn';
 import { EmptyState, ErrorBanner, LoadingView } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 import { formatPlate } from '../../utils/formatPlate';
+import { background, raisedSurface } from '../../theme/neumorphism';
+import { Text } from '../../components/LocalizedText';
 
 type Props = MainTabScreenProps<'StoresTab'>;
 type GroupId = Exclude<GrnWorkGroup, 'approved'>;
@@ -276,20 +278,18 @@ export default function GrnListScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   flexOne: { flex: 1 },
   list: { paddingHorizontal: 10, paddingBottom: 24 },
   listHeader: { marginHorizontal: -8, marginTop: 10, marginBottom: 12 },
   refreshButton: {
+    ...raisedSurface,
     minHeight: 40,
     minWidth: 60,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 9,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
-    backgroundColor: '#fff',
     alignSelf: 'flex-end',
   },
   refreshText: { color: '#17202b', fontSize: 12, fontWeight: '600' },
@@ -297,24 +297,20 @@ const styles = StyleSheet.create({
   groupTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupTitle: { color: '#17202b', fontSize: 15, fontWeight: '700' },
   countBadge: {
+    ...raisedSurface,
     minWidth: 20,
     height: 18,
     paddingHorizontal: 5,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 9,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
-    backgroundColor: '#fff',
   },
   countText: { color: '#334155', fontFamily: 'monospace', fontSize: 10, fontWeight: '600' },
   groupHint: { color: '#526171', fontSize: 11, lineHeight: 16, marginTop: 2 },
   emptyGroup: { color: '#64748b', fontSize: 12, marginTop: 2, marginBottom: 18 },
   workCard: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     padding: 12,
     marginBottom: 16,
   },
@@ -339,7 +335,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   actionButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, borderRadius: 9 },
   actionButtonPrimary: { backgroundColor: '#b8410e' },
-  actionButtonSecondary: { borderWidth: 1, borderColor: '#dce2e8', backgroundColor: '#fff' },
+  actionButtonSecondary: { ...raisedSurface },
   actionText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   actionTextSecondary: { color: '#17202b' },
   disabled: { opacity: 0.6 },

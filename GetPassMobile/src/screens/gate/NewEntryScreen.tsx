@@ -5,7 +5,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -21,6 +20,8 @@ import { DEFAULT_OCR_CONFIDENCE_THRESHOLD, useGateInConfig } from '../../queries
 import { ChallanLineIn, PassType } from '../../types/entries';
 import { ErrorBanner, FieldLabel, Input } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
+import { background, raisedSurface, insetSurfaceStyle } from '../../theme/neumorphism';
+import { Text } from '../../components/LocalizedText';
 
 type Props = MainTabScreenProps<'GateInTab'>;
 type PhotoAssets = Partial<Record<EntryPhotoKind, Asset>>;
@@ -800,43 +801,37 @@ export default function NewEntryScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#eef1f5' },
+  screen: { flex: 1, backgroundColor: background },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 16 },
   segmented: {
+    ...insetSurfaceStyle,
     minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f3f6',
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     padding: 4,
     marginBottom: 18,
   },
   segment: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 7 },
-  segmentActive: { backgroundColor: '#fff', elevation: 1 },
+  segmentActive: { ...raisedSurface, elevation: 2 },
   segmentText: { color: '#334155', fontSize: 12, fontWeight: '600' },
   segmentTextActive: { color: '#b8410e' },
   introBlock: { marginBottom: 12 },
   introText: { color: '#17202b', fontSize: 12, lineHeight: 18, marginBottom: 10 },
   qrButton: {
+    ...raisedSurface,
     alignSelf: 'flex-start',
     minHeight: 38,
     justifyContent: 'center',
     paddingHorizontal: 12,
     borderRadius: 9,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
-    backgroundColor: '#fff',
   },
   qrButtonText: { color: '#17202b', fontSize: 11, fontWeight: '700' },
   photoList: { gap: 10 },
   photoCard: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     padding: 8,
   },
   photoFrame: {
@@ -857,14 +852,12 @@ const styles = StyleSheet.create({
   photoActions: { flexDirection: 'row', gap: 6 },
   actionButton: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 9 },
   actionButtonPrimary: { backgroundColor: '#b8410e' },
-  actionButtonSecondary: { borderWidth: 1, borderColor: '#dce2e8', backgroundColor: '#fff' },
+  actionButtonSecondary: { ...raisedSurface },
   actionButtonText: { color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' },
   actionButtonTextSecondary: { color: '#17202b' },
   detailsCard: {
-    backgroundColor: '#fff',
+    ...raisedSurface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#dce2e8',
     padding: 12,
     marginTop: 10,
   },
@@ -879,7 +872,7 @@ const styles = StyleSheet.create({
   challanHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, marginBottom: 2 },
   lineCount: { color: '#64748b', fontFamily: 'monospace', fontSize: 10 },
   challanLine: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
-  lineNumber: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#eef1f5' },
+  lineNumber: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: background },
   lineNumberText: { color: '#475569', fontSize: 10, fontWeight: '700' },
   lineMaterial: { flex: 2 },
   lineQuantity: { flex: 1 },
@@ -893,7 +886,7 @@ const styles = StyleSheet.create({
   successActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   link: { color: '#b8410e', fontSize: 11, fontWeight: '700', marginTop: 8 },
   mutedLink: { opacity: 0.6 },
-  actionBar: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#dce2e8', paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 },
+  actionBar: { backgroundColor: background, borderTopWidth: 1, borderTopColor: '#d8e0ea', paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 },
   actionHint: { color: '#64748b', fontSize: 10, lineHeight: 14, marginBottom: 7 },
   actionRow: { flexDirection: 'row', gap: 8 },
   disabled: { opacity: 0.55 },
