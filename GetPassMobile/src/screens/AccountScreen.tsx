@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../auth/AuthContext';
 import { Button, Card, colors } from '../components/ui';
@@ -13,7 +14,8 @@ export default function AccountScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
 
   return (
-    <ScrollView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
+    <ScrollView style={styles.flexOne}>
       <Card>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{(user?.full_name ?? '?').charAt(0).toUpperCase()}</Text>
@@ -31,11 +33,13 @@ export default function AccountScreen({ navigation }: Props) {
         <Button label="Sign out" variant="danger" onPress={signOut} />
       </Card>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  flexOne: { flex: 1 },
   avatar: {
     width: 56,
     height: 56,

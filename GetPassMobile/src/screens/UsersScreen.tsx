@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { createUser, deleteUser, listUsers, updateUser } from '../api/users';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorBanner, FieldLabel, Input, LoadingView } from '../components/ui';
@@ -270,8 +271,9 @@ export default function UsersScreen() {
   if (isLoading) return <LoadingView />;
 
   return (
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
     <FlatList
-      style={styles.screen}
+      style={styles.flexOne}
       data={users}
       keyExtractor={item => String(item.id)}
       keyboardShouldPersistTaps="handled"
@@ -324,11 +326,13 @@ export default function UsersScreen() {
       )}
       contentContainerStyle={styles.list}
     />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   list: { paddingHorizontal: 10, paddingBottom: 24 },
   addButton: {
     height: 42,

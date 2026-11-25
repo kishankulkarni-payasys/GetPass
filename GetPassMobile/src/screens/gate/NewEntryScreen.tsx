@@ -12,6 +12,7 @@ import {
 import { Camera, CameraType } from 'react-native-camera-kit';
 import { Asset, launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { PERMISSIONS, RESULTS, check, request } from 'react-native-permissions';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/TabNavigator';
 import { createEntry, EntryPhotoKind, PhotoUploadAsset, uploadEntryPhoto } from '../../api/entries';
 import { ChallanLineIn, PassType } from '../../types/entries';
@@ -467,7 +468,7 @@ export default function NewEntryScreen({ navigation }: Props) {
       : 'Vehicle number and driver name are required.';
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -658,7 +659,7 @@ export default function NewEntryScreen({ navigation }: Props) {
           <Text style={styles.scannerHint}>Place the QR code inside the frame.</Text>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

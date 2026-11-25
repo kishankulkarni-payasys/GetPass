@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { approveGrn, editGrnLines, getGrn, retryGrnPost } from '../../api/grn';
 import { getEntry } from '../../api/entries';
 import { useAuth } from '../../auth/AuthContext';
@@ -297,7 +298,8 @@ export default function GrnDetailScreen({ route, navigation }: Props) {
   const qualityResult = grn.quality_result ?? entry.quality?.result;
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
+      <KeyboardAvoidingView style={styles.flexOne} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -405,12 +407,14 @@ export default function GrnDetailScreen({ route, navigation }: Props) {
           </TouchableOpacity>
         </View>
       ) : null}
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   scrollView: { flex: 1 },
   content: { paddingHorizontal: 6, paddingTop: 16, paddingBottom: 16 },
   errorScreen: { flex: 1, justifyContent: 'center', backgroundColor: '#eef1f5' },

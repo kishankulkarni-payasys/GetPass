@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { listEntries } from '../../api/entries';
 import { ErrorBanner, LoadingView } from '../../components/ui';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
@@ -123,8 +124,9 @@ export default function WeighbridgeScreen({ navigation }: Props) {
   if (isLoading) return <LoadingView />;
 
   return (
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
     <FlatList
-      style={styles.screen}
+      style={styles.flexOne}
       data={visibleEntries}
       keyExtractor={item => String(item.id)}
       contentContainerStyle={styles.listContent}
@@ -219,11 +221,13 @@ export default function WeighbridgeScreen({ navigation }: Props) {
         </View>
       }
     />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   listContent: { paddingBottom: 16 },
   summary: { paddingHorizontal: 9, paddingTop: 22, paddingBottom: 12, gap: 5 },
   summaryText: { color: '#15263a', fontSize: 12 },

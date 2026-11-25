@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 
 // Mirrors Frontend/src/pages/LoginPage.jsx and its .login-* styles in
@@ -101,8 +102,9 @@ export default function LoginScreen() {
   }
 
   return (
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom', 'left', 'right']}>
     <KeyboardAvoidingView
-      style={styles.screen}
+      style={styles.flexOne}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -195,11 +197,13 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: PALETTE.control },
+  flexOne: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 20, paddingBottom: 32 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

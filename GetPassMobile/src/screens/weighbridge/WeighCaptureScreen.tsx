@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { getEntry } from '../../api/entries';
 import { captureWeighment, readIndicator } from '../../api/weighments';
@@ -101,7 +102,8 @@ export default function WeighCaptureScreen({ route }: Props) {
   if (isLoading) return <LoadingView />;
 
   return (
-    <ScrollView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
+    <ScrollView style={styles.flexOne}>
       <Card>
         <Text style={styles.title}>{vehicleNumber}</Text>
         <Text style={styles.subtitle}>
@@ -164,11 +166,13 @@ export default function WeighCaptureScreen({ route }: Props) {
         </View>
       </Card>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  flexOne: { flex: 1 },
   title: { fontSize: 20, fontWeight: '700', color: colors.text },
   subtitle: { fontSize: 13, color: colors.subtext, marginTop: 4, marginBottom: 8 },
   segmented: { flexDirection: 'row', backgroundColor: '#eee', borderRadius: 8, padding: 4, marginBottom: 4 },

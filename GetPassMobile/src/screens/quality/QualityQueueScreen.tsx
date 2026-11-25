@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getQualityQueue } from '../../api/quality';
 import { ErrorBanner, LoadingView } from '../../components/ui';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
@@ -145,8 +146,9 @@ export default function QualityQueueScreen({ navigation }: Props) {
     .sort(oldestFirst);
 
   return (
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
     <FlatList
-      style={styles.screen}
+      style={styles.flexOne}
       data={pendingItems}
       keyExtractor={item => String(item.id)}
       contentContainerStyle={styles.list}
@@ -191,11 +193,13 @@ export default function QualityQueueScreen({ navigation }: Props) {
         ) : undefined
       }
     />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   list: { paddingHorizontal: 6, paddingTop: 18, paddingBottom: 24 },
   sectionTitle: { color: '#131a22', fontSize: 20, fontWeight: '700' },
   sectionHint: { color: '#526171', fontSize: 12, lineHeight: 17, marginTop: 3, marginBottom: 4 },

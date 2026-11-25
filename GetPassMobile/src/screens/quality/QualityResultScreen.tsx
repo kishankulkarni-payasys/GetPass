@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { getEntry } from '../../api/entries';
 import { putQualityResult } from '../../api/quality';
@@ -101,7 +102,8 @@ export default function QualityResultScreen({ route, navigation }: Props) {
   if (!entry) return <ErrorBanner message={errorMessage ?? 'Pass not found.'} />;
 
   return (
-    <ScrollView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
+    <ScrollView style={styles.flexOne}>
       <Card>
         <Text style={styles.title}>{entry.vehicle_number}</Text>
         <Text style={styles.subtitle}>
@@ -146,11 +148,13 @@ export default function QualityResultScreen({ route, navigation }: Props) {
         </View>
       </Card>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  flexOne: { flex: 1 },
   title: { fontSize: 20, fontWeight: '700', color: colors.text },
   subtitle: { fontSize: 13, color: colors.subtext, marginTop: 4 },
   lineTitle: { fontSize: 15, fontWeight: '700', color: colors.text },

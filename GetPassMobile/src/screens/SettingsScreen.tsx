@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getApiBaseUrl, getDefaultApiBaseUrl, setApiBaseUrl } from '../config/env';
 import { Button, Card, ErrorBanner, FieldLabel, Input, colors } from '../components/ui';
 
@@ -34,7 +35,8 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
+    <ScrollView style={styles.flexOne}>
       <Card>
         <Text style={styles.title}>API server address</Text>
         <Text style={styles.hint}>
@@ -61,11 +63,13 @@ export default function SettingsScreen() {
         <Button label={`Reset to default (${getDefaultApiBaseUrl()})`} variant="secondary" onPress={handleResetDefault} />
       </Card>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  flexOne: { flex: 1 },
   title: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
   hint: { fontSize: 12, color: colors.subtext, marginBottom: 12 },
   saved: { fontSize: 13, color: colors.success, fontWeight: '600', marginBottom: 8 },

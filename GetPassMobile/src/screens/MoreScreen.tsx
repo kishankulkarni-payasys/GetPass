@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { TabBarIcon, TabBarIconName } from '../components/icons/TabBarIcon';
 import { getActionsForRole } from '../navigation/roleActions';
@@ -115,7 +116,7 @@ export function MoreSectionsSheet({
           style={StyleSheet.absoluteFill}
           onPress={onClose}
         />
-        <View style={styles.sheet}>
+        <SafeAreaView style={styles.sheet} edges={['bottom']}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>More sections</Text>
             <TouchableOpacity
@@ -137,7 +138,7 @@ export function MoreSectionsSheet({
               />
             ))}
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </View>
     </Modal>
   );
@@ -148,7 +149,7 @@ export default function MoreScreen({ navigation }: Props) {
   const items = getMoreItems(user?.role);
 
   return (
-    <SafeAreaView style={styles.fallbackScreen}>
+    <SafeAreaView style={styles.fallbackScreen} edges={['left', 'right']}>
       <Text style={styles.fallbackTitle}>More sections</Text>
       <ScrollView contentContainerStyle={styles.fallbackRows}>
         {items.map(item => (

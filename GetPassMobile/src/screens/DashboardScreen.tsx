@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../navigation/TabNavigator';
 import { getDashboardSummary } from '../api/dashboard';
 import { DashboardRow, DashboardSummary, Tone } from '../types/dashboard';
@@ -260,9 +261,9 @@ export default function DashboardScreen({ navigation }: Props) {
   const qualityAlert = summary.kpis.quality_over_sla > 0;
 
   return (
-    <>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <FlatList
-        style={styles.screen}
+        style={styles.flexOne}
         data={summary.board}
         keyExtractor={item => String(item.id)}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
@@ -332,12 +333,13 @@ export default function DashboardScreen({ navigation }: Props) {
         onClose={() => setIsDatePickerOpen(false)}
         onApply={setDay}
       />
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   loadError: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   list: { paddingBottom: 24 },
   toolbar: { paddingHorizontal: 2, paddingTop: 10, paddingBottom: 8 },

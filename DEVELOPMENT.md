@@ -57,6 +57,87 @@ React Native CLI project talking to the same FastAPI backend via Bearer-token au
 - `utils/formatPlate.ts`, `utils/apiError.ts` — plate formatting, API error normalization
 - App icon regenerated for all Android mipmap densities and iOS AppIcon sizes
 
+## Database schema (SQLAlchemy ORM)
+
+All tables are defined as SQLAlchemy models in `Backend/app/models.py` (`Base` from `app/database.py`). SQL Server backend; the app creates tables on startup but not the database itself. Every timestamp is naive UTC, set in Python. `PassWeighment`, `PassAuditLog` and `IntegrationEvent` are insert-only (no in-place updates — a correction adds a new row).
+
+### `vehicle_entries` — the core gate pass record
+| Column | Type | Notes |
+|---|---|---|
+| id | PK int | |
+| vehicle_number | string(20) | indexed |
+| project_name, subproject_name | string(100) | nullable |
+| driver_name | string(100) | required |
+| driver_phone | string(20) | nullable |
+| material_description | string(200) | nullable |
+| material_quantity | numeric(10,2) | nullable |
+| material_unit | string(20) | nullable |
+| purpose | string(50) | nullable |
+| reference_doc_number | string(50) | nullable |
+| supplier_transporter_name | string(100) | nullable |
+| entry_time | datetime | default now |
+| exit_time | datetime | nullable |
+| gross_weight, weight_unit, weighed_at | — | denormalized copy of the current weighment, for list screens |
+| weighed_by_id | FK → users.id | nullable |
+| created_at | datetime | default now |
+| pass_type | string(10) | default `general` |
+| pass_state | string(20) | default `GATE_IN`, indexed |
+| pass_state_changed_at | datetime | nullable |
+| client_ref | string(36) | nullable, unique where set |
+| gate_in_method | string(10) | nullable |
+| created_by_id | FK → users.id | nullable |
+| po_number | string(50) | indexed |
+| challan_number | string(50) | nullable |
+| po_lookup_status | string(15) | nullable |
+| po_lookup_snapshot | text | nullable |
+| anpr_confidence, po_ocr_confidence, challan_ocr_confidence | numeric(5,2) | nullable |
+| manual_override | bool | default false |
+| cancelled_reason | unicode(200) | nullable |
+
+Relationships: `photos` (→ `vehicle_entry_photos`), `challan_lines` (→ `pass_challan_lines`), `weighments` (→ `pass_weighments`, view-only), `goods_receipt` (→ `goods_receipts`, one-to-one, view-only), `quality_results` (→ `quality_results`, view-only).
+
+### `vehicle_entry_photos`
+id · entry_id (FK → vehicle_entries) · file_path · uploaded_by_id (FK → users) · uploaded_at · kind (default `vehicle`) · weighment_id (FK → pass_weighments, nullable)
+
+### `pass_challan_lines`
+id · entry_id (FK → vehicle_entries) · line_no · material · quantity · uom · ocr_confidence. Unique constraint on (entry_id, line_no).
+
+### `pass_weighments` — insert-only
+id · entry_id (FK → vehicle_entries) · kind · weight · unit · source · indicator_frame_ref · raw_frame · stable (bool) · manual_reason · supersedes_id (self-FK) · captured_by_id (FK → users) · captured_at
+
+### `quality_results`
+id · entry_id (FK → vehicle_entries) · result · source · inspected_by_name · inspected_by_id (FK → users) · inspected_at · recorded_at · remarks · is_current (bool). Has `lines` → `quality_result_lines`.
+
+### `quality_result_lines`
+id · quality_result_id (FK → quality_results) · challan_line_id (FK → pass_challan_lines) · accepted_qty · rejected_qty · remarks
+
+### `goods_receipts`
+id · entry_id (FK → vehicle_entries, unique — one GRN per entry) · status · created_by_id / created_at · approved_by_id / approved_at · erp_status (indexed) · erp_grn_number · erp_attempts · erp_last_error · erp_last_attempt_at · idempotency_key (unique) · return_pass_number (unique where set). Has `lines` → `goods_receipt_lines`.
+
+### `goods_receipt_lines`
+id · goods_receipt_id (FK → goods_receipts) · challan_line_id (FK → pass_challan_lines, nullable) · material · uom · po_qty · challan_qty · received_qty · accepted_qty · rejected_qty · qty_edited (bool) · remarks
+
+### `pass_audit_log` — insert-only
+id · entry_id (FK → vehicle_entries) · action · field · old_value · new_value · is_manual_override (bool) · actor_user_id (FK → users) · actor_service · created_at
+
+### `integration_events` — outbox, insert-only
+id · event_name · version · entry_id (FK → vehicle_entries) · payload (text) · created_at · delivered_at. (Delivery to a message bus is out of scope — this is just the outbox table.)
+
+### `users`
+id · username (unique, indexed) · password_hash · full_name · role · is_active (bool, default true) · created_at
+
+### Entity relationships (simplified)
+```
+users ──< vehicle_entries (created_by, weighed_by)
+vehicle_entries ──< vehicle_entry_photos
+vehicle_entries ──< pass_challan_lines ──< quality_result_lines, goods_receipt_lines
+vehicle_entries ──< pass_weighments (insert-only, self-referencing supersedes_id)
+vehicle_entries ──< quality_results ──< quality_result_lines
+vehicle_entries ──1 goods_receipts ──< goods_receipt_lines
+vehicle_entries ──< pass_audit_log (insert-only)
+vehicle_entries ──< integration_events (insert-only outbox)
+```
+
 ## Run the Android app on Windows
 
 These steps use the connected Android phone and USB port forwarding. Keep the backend on port `8000` and Metro on port `8082`.

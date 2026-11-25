@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { cancelEntry, gateOutEntry, getEntry } from '../../api/entries';
 import { getApiBaseUrl } from '../../config/env';
 import { getToken } from '../../auth/tokenStorage';
@@ -582,7 +583,8 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
+    <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
       <View style={styles.passHeader}>
         <View style={styles.plate}>
           <Text style={styles.plateText}>{formatPlate(entry.vehicle_number)}</Text>
@@ -695,11 +697,13 @@ export default function EntryDetailScreen({ route, navigation }: Props) {
         <AuditHistory audit={entry.audit ?? []} />
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   content: { paddingHorizontal: 4, paddingTop: 16, paddingBottom: 24 },
   passHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   plate: {

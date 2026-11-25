@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { gateOutEntry, getEntry, listEntries } from '../../api/entries';
 import { PassState, PassType, VehicleEntryOut } from '../../types/entries';
@@ -487,8 +488,9 @@ export default function EntryListScreen({ route, navigation }: Props) {
       .sort(oldestFirst);
 
     return (
+      <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
       <FlatList
-        style={styles.screen}
+        style={styles.flexOne}
         data={readyEntries}
         keyExtractor={item => String(item.id)}
         keyboardShouldPersistTaps="handled"
@@ -549,12 +551,14 @@ export default function EntryListScreen({ route, navigation }: Props) {
           ) : undefined
         }
       />
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
     <FlatList
-      style={styles.screen}
+      style={styles.flexOne}
       data={visibleEntries}
       keyExtractor={item => String(item.id)}
       keyboardShouldPersistTaps="handled"
@@ -631,11 +635,13 @@ export default function EntryListScreen({ route, navigation }: Props) {
       )}
       ListEmptyComponent={<EmptyState message={hasFilters ? 'No passes match these filters.' : 'No passes found.'} />}
     />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   listContent: { paddingBottom: 24 },
   gateOutHeader: { paddingHorizontal: 8, paddingTop: 18, paddingBottom: 4 },
   gateOutSearchInput: { minHeight: 44, fontSize: 13, borderRadius: 8, paddingVertical: 10 },

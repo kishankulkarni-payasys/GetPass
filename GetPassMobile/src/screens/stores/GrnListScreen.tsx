@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/TabNavigator';
 import { listStoreWork, retryGrnPost, startGrn } from '../../api/grn';
 import { sendToQuality } from '../../api/quality';
@@ -232,8 +233,9 @@ export default function GrnListScreen({ navigation }: Props) {
   if (isLoading) return <LoadingView />;
 
   return (
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
     <FlatList
-      style={styles.screen}
+      style={styles.flexOne}
       data={rows}
       keyExtractor={row => row.key}
       contentContainerStyle={styles.list}
@@ -281,11 +283,13 @@ export default function GrnListScreen({ navigation }: Props) {
       }}
       ListEmptyComponent={<EmptyState message="Nothing in the store work list right now." />}
     />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#eef1f5' },
+  flexOne: { flex: 1 },
   list: { paddingHorizontal: 10, paddingBottom: 24 },
   listHeader: { marginHorizontal: -8, marginTop: 10, marginBottom: 12 },
   refreshButton: {
