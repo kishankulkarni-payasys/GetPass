@@ -155,31 +155,29 @@ Open PowerShell in `Backend/`. On first setup, create the Python environment, in
 
 ```powershell
 Set-Location 'C:\Users\Kishan Kulkarni\Desktop\GetPass\Backend'
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 notepad .env
 ```
 
 In `.env`, set a random `SECRET_KEY` (at least 32 characters). Generate one with:
 
 ```powershell
-python -c "import secrets; print(secrets.token_urlsafe(48))"
+.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
 Also configure `DB_SERVER` / `DB_NAME` for your SQL Server. If the database has no users yet, set a private `DEFAULT_ADMIN_PASSWORD` (at least 8 characters; do not use the old placeholder). Do not commit `.env`.
 Ensure the SQL Server instance is running and the database exists; the backend creates tables but does not create the database itself.
 
-For later runs, just activate the existing environment. Start the server in this PowerShell window:
+For later runs, start the server in this PowerShell window using the virtual environment:
 
 ```powershell
 Set-Location 'C:\Users\Kishan Kulkarni\Desktop\GetPass\Backend'
-.\.venv\Scripts\Activate.ps1
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-If PowerShell blocks the activation script, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` in that window, then activate the environment again.
+Using the environment's Python directly avoids needing to activate a PowerShell script.
 
 Leave this window open. Check the API from another PowerShell window:
 
@@ -233,11 +231,27 @@ adb shell dumpsys activity activities | Select-String 'ResumedActivity'
 
 The result should contain `com.getpassmobile/.MainActivity`. Saved JavaScript changes refresh through Metro; use the Android Dev Menu's **Reload** option to reload manually.
 
+Confirm the app process and API are available with:
+
+```powershell
+adb shell pidof com.getpassmobile
+Invoke-RestMethod http://127.0.0.1:8000/api/health
+```
+
+The API health response should report `status : ok`. Keep both the backend and Metro windows open while using the app.
+
 ### Emulator or Wi-Fi-only phone
 
 - **Android emulator:** start an emulator in Android Studio. USB `adb reverse` commands are not needed; the Android API host is derived from the Metro URL, with `10.0.2.2` used for the emulator.
 - **Phone over Wi-Fi:** keep the backend bound to `0.0.0.0`, connect the phone and computer to the same network, and set the mobile app's **More → Settings → API server address** to `http://<computer-LAN-IP>:8000`. Find the computer address with `ipconfig` and allow the backend/Metro through Windows Firewall if prompted.
 - If you choose a Metro port other than `8082`, use that same port for `npm start`, `adb reverse`, and `npm run android`.
+
+### Setup completed in this workspace (25 Nov 2026)
+
+- Merged all 35 settings from `Backend/.env.example` into the local `Backend/.env`, preserving its existing values. The `.env` file is Git-ignored; secret values are intentionally not recorded here.
+- Created `Backend/.venv` and installed the packages from `Backend/requirements.txt`.
+- Built and installed the Android app on the connected phone. At verification time, Metro was available on port `8082`, the backend health endpoint on port `8000` returned `status : ok`, and the app was open.
+- Updated this guide with the repeatable setup, launch, and verification commands. No application source files were changed for this setup.
 
 ### Build a debug APK without launching the app
 
