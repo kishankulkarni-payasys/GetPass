@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -40,6 +40,11 @@ function initialsFor(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length > 1) return words.slice(0, 2).map(word => word[0]).join('').toUpperCase();
   return (words[0] ?? '?').slice(0, 2).toUpperCase();
+}
+
+function matchesSearch(user: UserOut, query: string): boolean {
+  const haystacks = [user.username, user.full_name, user.email, user.contact_no];
+  return haystacks.some(value => Boolean(value) && value!.toLocaleLowerCase().includes(query));
 }
 
 function RoleSelect({
@@ -98,14 +103,14 @@ function UserCard({
   user,
   isCurrentUser,
   isMutating,
-  onRoleChange,
+  onEdit,
   onToggleActive,
   onDelete,
 }: {
   user: UserOut;
   isCurrentUser: boolean;
   isMutating: boolean;
-  onRoleChange: (user: UserOut, role: UserRole) => void;
+  onEdit: (user: UserOut) => void;
   onToggleActive: (user: UserOut) => void;
   onDelete: (user: UserOut) => void;
 }) {
@@ -119,6 +124,12 @@ function UserCard({
           <View style={styles.userDetails}>
             <Text style={styles.userName}>{user.full_name}</Text>
             <Text style={styles.username}>@{user.username}</Text>
+            <Text style={[styles.userMeta, !user.email && styles.userMetaMuted]}>
+              {user.email || 'No email'}
+            </Text>
+            <Text style={[styles.userMeta, !user.contact_no && styles.userMetaMuted]}>
+              {user.contact_no || 'No contact info'}
+            </Text>
           </View>
         </View>
         <View style={styles.badges}>
@@ -133,14 +144,15 @@ function UserCard({
         </View>
       </View>
 
-      <FieldLabel label="Account role" />
-      <RoleSelect
-        value={user.role}
-        disabled={isCurrentUser || isMutating}
-        onChange={role => onRoleChange(user, role)}
-      />
-
       <View style={styles.buttonRow}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          style={[styles.userActionButton, styles.editButton, isMutating && styles.disabledButton]}
+          disabled={isMutating}
+          onPress={() => onEdit(user)}
+        >
+          <Text style={[styles.userActionText, styles.editText, isMutating && styles.disabledText]}>Edit</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           accessibilityRole="button"
           style={[
@@ -179,14 +191,26 @@ export default function UsersScreen() {
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<UserRole>('security_guard');
   const [mutatingUserId, setMutatingUserId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingUser, setEditingUser] = useState<UserOut | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editRole, setEditRole] = useState<UserRole>('security_guard');
+  const [editEmail, setEditEmail] = useState('');
+  const [editContactNo, setEditContactNo] = useState('');
 
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const isSubmitting = createUserMutation.isPending;
+  const isSavingEdit = updateUserMutation.isPending && editingUser !== null;
 
-  const users = fetchedUsers ?? [];
   const errorMessage = actionError ?? (loadError ? extractErrorMessage(loadError, 'Could not load users.') : null);
+
+  const visibleUsers = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!query) return fetchedUsers ?? [];
+    return (fetchedUsers ?? []).filter(candidate => matchesSearch(candidate, query));
+  }, [fetchedUsers, searchQuery]);
 
   async function handleToggleActive(target: UserOut) {
     setActionError(null);
@@ -200,12 +224,38 @@ export default function UsersScreen() {
     }
   }
 
-  async function handleRoleChange(target: UserOut, nextRole: UserRole) {
-    if (target.role === nextRole) return;
+  function openEditModal(target: UserOut) {
     setActionError(null);
-    setMutatingUserId(target.id);
+    setEditingUser(target);
+    setEditFullName(target.full_name);
+    setEditRole(target.role);
+    setEditEmail(target.email ?? '');
+    setEditContactNo(target.contact_no ?? '');
+  }
+
+  function closeEditModal() {
+    if (isSavingEdit) return;
+    setEditingUser(null);
+  }
+
+  const canSubmitEdit = editFullName.trim().length > 0 && !isSavingEdit;
+
+  async function handleSaveEdit() {
+    if (!editingUser) return;
+    const isEditingSelf = editingUser.id === currentUser?.id;
+    setActionError(null);
+    setMutatingUserId(editingUser.id);
     try {
-      await updateUserMutation.mutateAsync({ userId: target.id, payload: { role: nextRole } });
+      await updateUserMutation.mutateAsync({
+        userId: editingUser.id,
+        payload: {
+          full_name: editFullName.trim(),
+          role: isEditingSelf ? editingUser.role : editRole,
+          email: editEmail.trim() || null,
+          contact_no: editContactNo.trim() || null,
+        },
+      });
+      setEditingUser(null);
     } catch (error) {
       setActionError(extractErrorMessage(error, 'Could not update that user.'));
     } finally {
@@ -267,7 +317,7 @@ export default function UsersScreen() {
     <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
       <FlatList
         style={styles.flexOne}
-        data={users}
+        data={visibleUsers}
         keyExtractor={item => String(item.id)}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
@@ -276,11 +326,19 @@ export default function UsersScreen() {
             {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
             <TouchableOpacity
               accessibilityRole="button"
-              style={styles.addButton}
+              style={[styles.addButton, styles.addButtonCompact]}
               onPress={() => setShowCreateForm(true)}
             >
               <Text style={styles.addButtonText}>Add user</Text>
             </TouchableOpacity>
+            <Input
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search users..."
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.searchInput}
+            />
           </>
         }
         ListEmptyComponent={<Text style={styles.emptyText}>No users found.</Text>}
@@ -289,7 +347,7 @@ export default function UsersScreen() {
             user={item}
             isCurrentUser={item.id === currentUser?.id}
             isMutating={mutatingUserId === item.id}
-            onRoleChange={handleRoleChange}
+            onEdit={openEditModal}
             onToggleActive={handleToggleActive}
             onDelete={confirmDelete}
           />
@@ -356,6 +414,81 @@ export default function UsersScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <Modal
+        visible={editingUser !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeEditModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.createModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <TouchableOpacity
+            accessibilityLabel="Close edit user form"
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeEditModal}
+          />
+          <View style={styles.createModal}>
+            <View style={styles.createModalHeader}>
+              <View>
+                <Text style={styles.createTitle}>Edit team account</Text>
+                <Text style={styles.createCopy}>Update profile details and permissions for this user.</Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={styles.closeButton}
+                disabled={isSavingEdit}
+                onPress={closeEditModal}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.createModalBody}
+            >
+              <FieldLabel label="Full name *" />
+              <Input value={editFullName} onChangeText={setEditFullName} placeholder="Full name" />
+              <FieldLabel label="Email" />
+              <Input
+                value={editEmail}
+                onChangeText={setEditEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder="Email"
+              />
+              <FieldLabel label="Contact number" />
+              <Input
+                value={editContactNo}
+                onChangeText={setEditContactNo}
+                keyboardType="phone-pad"
+                placeholder="Contact number"
+              />
+              <FieldLabel label="Account role" />
+              <RoleSelect
+                value={editRole}
+                disabled={editingUser?.id === currentUser?.id}
+                onChange={setEditRole}
+              />
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={[styles.addButton, styles.createSubmitButton, !canSubmitEdit && styles.disabledButton]}
+                disabled={!canSubmitEdit}
+                onPress={handleSaveEdit}
+              >
+                {isSavingEdit
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.addButtonText}>Save changes</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -373,7 +506,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  addButtonCompact: {
+    alignSelf: 'flex-end',
+    width: 130,
+    paddingHorizontal: 12,
+  },
   addButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  searchInput: { marginBottom: 12 },
   createModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -415,6 +554,8 @@ const styles = StyleSheet.create({
   userDetails: { flex: 1 },
   userName: { color: '#15263a', fontSize: 14, fontWeight: '700' },
   username: { color: '#526171', fontSize: 11, marginTop: 2 },
+  userMeta: { color: '#526171', fontSize: 11, marginTop: 2 },
+  userMetaMuted: { color: '#9aa6b1', fontStyle: 'italic' },
   badges: { alignItems: 'flex-end', gap: 5 },
   youBadge: { backgroundColor: '#e8f1fa', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 },
   youBadgeText: { color: '#1e5d91', fontSize: 9, fontWeight: '700' },
@@ -434,14 +575,16 @@ const styles = StyleSheet.create({
   roleSelectDisabled: { backgroundColor: '#f5f7f9' },
   roleSelectText: { color: '#15263a', fontSize: 13 },
   roleChevron: { color: '#526171', fontSize: 18, marginTop: -4 },
-  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  userActionButton: { flex: 1, height: 40, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  userActionButton: { flex: 1, height: 36, borderRadius: 8, paddingVertical: 6, alignItems: 'center', justifyContent: 'center' },
+  editButton: { backgroundColor: '#eef1f5' },
+  editText: { color: '#15263a' },
   deactivateButton: { backgroundColor: '#c99217' },
   activateButton: { backgroundColor: '#238653' },
   deleteButton: { backgroundColor: '#a92729' },
   disabledButton: { opacity: 0.55 },
   disabledDeleteButton: { backgroundColor: '#d09494' },
-  userActionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  userActionText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   deactivateText: { color: '#161616' },
   disabledText: { color: '#7b8590' },
   emptyText: { color: '#526171', fontSize: 12, textAlign: 'center', paddingVertical: 18 },

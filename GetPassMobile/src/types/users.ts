@@ -13,6 +13,8 @@ export interface UserUpdate {
   role?: UserRole;
   is_active?: boolean;
   password?: string;
+  email?: string | null;
+  contact_no?: string | null;
 }
 
 export interface UserOut {
@@ -22,4 +24,6 @@ export interface UserOut {
   role: UserRole;
   is_active: boolean;
   created_at: string;
+  email?: string | null;
+  contact_no?: string | null;
 }
