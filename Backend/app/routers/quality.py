@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.auth import QUALITY_ROLES, STORE_ROLES, get_current_user, require_roles
+from app.auth import ROLE_QUALITY_INSPECTOR, STORE_ROLES, get_current_user, require_roles
 from app.database import get_db
 from app.integration_events import INSPECTION_REQUESTED_EVENT, INSPECTION_REQUESTED_VERSION, record_event
 from app.inward_schemas import QualityQueueItem, QualityResultIn, QualityResultSaved
@@ -21,7 +21,9 @@ router = APIRouter(tags=["quality"], dependencies=[Depends(get_current_user)])
 SEND_TO_QUALITY_TRANSITION = "T3"
 
 require_store = require_roles(*STORE_ROLES)
-require_quality = require_roles(*QUALITY_ROLES)
+# Quality inspection (queue + recording results) is restricted to the quality_inspector role
+# itself; admins no longer get access on this side.
+require_quality_inspector = require_roles(ROLE_QUALITY_INSPECTOR)
 
 
 @router.post("/api/entries/{entry_id}/send-to-quality", response_model=VehicleEntryOut)
@@ -41,7 +43,7 @@ def send_to_quality(entry_id: int, db: Session = Depends(get_db), current_user: 
     return to_entry_out(entry)
 
 
-@router.get("/api/quality/queue", response_model=List[QualityQueueItem], dependencies=[Depends(require_quality)])
+@router.get("/api/quality/queue", response_model=List[QualityQueueItem], dependencies=[Depends(require_quality_inspector)])
 def get_quality_queue(db: Session = Depends(get_db)):
     return build_quality_queue(db)
 
@@ -51,7 +53,7 @@ def put_quality_result(
     entry_id: int,
     payload: QualityResultIn,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_quality),
+    current_user: User = Depends(require_quality_inspector),
 ):
     """T4 (first result) or T4b (correction before a GRN exists); the result is derived from the lines."""
     entry = get_entry_or_404(db, entry_id, for_update=True)

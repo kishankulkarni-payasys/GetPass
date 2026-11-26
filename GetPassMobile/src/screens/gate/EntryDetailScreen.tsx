@@ -422,35 +422,48 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   pass_cancelled: 'Pass cancelled',
 };
 
+function formatFieldName(field?: string | null): string {
+  if (!field) return '';
+  return field.replace(/_/g, ' ').replace(/^\w/, character => character.toUpperCase());
+}
+
 function AuditHistory({ audit }: { audit: AuditOut[] }) {
   if (audit.length === 0) return <Text style={styles.emptyText}>No history yet.</Text>;
+  // Newest first, like a timeline read top-to-bottom from "most recent".
   const orderedAudit = [...audit].sort(
     (first, second) => second.created_at.localeCompare(first.created_at) || second.id - first.id,
   );
 
   return (
-    <View style={styles.auditHistory}>
-      {orderedAudit.map(row => {
+    <View style={styles.auditTimeline}>
+      {orderedAudit.map((row, index) => {
         const hasChange = row.old_value !== null || row.new_value !== null;
         const actionLabel = AUDIT_ACTION_LABELS[row.action]
           ?? row.action.replace(/_/g, ' ').replace(/^\w/, character => character.toUpperCase());
         const actor = row.actor_name || row.actor_service || 'System';
+        const isLastStep = index === orderedAudit.length - 1;
         return (
-          <View key={row.id} style={styles.auditItem}>
-            <View style={styles.auditHeader}>
-              <Text style={styles.auditAction}>{actionLabel}</Text>
-              {row.is_manual_override ? (
-                <View style={styles.manualBadge}>
-                  <Text style={styles.manualBadgeText}>MANUAL CHANGE</Text>
-                </View>
-              ) : null}
+          <View key={row.id} style={styles.auditRow}>
+            <View style={styles.auditTimelineColumn}>
+              <View style={[styles.auditDot, row.is_manual_override && styles.auditDotManual]} />
+              {!isLastStep ? <View style={styles.auditLine} /> : null}
             </View>
-            {hasChange ? (
-              <Text style={styles.auditChange}>
-                {row.field ? `${row.field}: ` : ''}{row.old_value ?? '—'} → {row.new_value ?? '—'}
-              </Text>
-            ) : null}
-            <Text style={styles.auditMeta}>{actor} · {formatAuditDateTime(row.created_at)}</Text>
+            <View style={styles.auditItem}>
+              <View style={styles.auditHeader}>
+                <Text style={styles.auditAction}>{actionLabel}</Text>
+                {row.is_manual_override ? (
+                  <View style={styles.manualBadge}>
+                    <Text style={styles.manualBadgeText}>Manual change</Text>
+                  </View>
+                ) : null}
+              </View>
+              {hasChange ? (
+                <Text style={styles.auditChange}>
+                  {row.field ? `${formatFieldName(row.field)}: ` : ''}{row.old_value ?? '—'} → {row.new_value ?? '—'}
+                </Text>
+              ) : null}
+              <Text style={styles.auditMeta}>{actor} · {formatAuditDateTime(row.created_at)}</Text>
+            </View>
           </View>
         );
       })}
@@ -763,7 +776,7 @@ const styles = StyleSheet.create({
   weighmentValue: { color: '#15263a', fontSize: 12, fontWeight: '700', fontFamily: 'monospace' },
   weighmentBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   manualBadge: { backgroundColor: '#f8f0da', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  manualBadgeText: { color: '#80600f', fontSize: 9, fontWeight: '700' },
+  manualBadgeText: { color: '#80600f', fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
   indicatorBadge: { backgroundColor: '#e8f1fa' },
   weighmentBadgeText: { color: '#47617c', fontSize: 9, fontWeight: '700' },
   weighmentMeta: { color: '#526171', fontSize: 10, marginTop: 5 },
@@ -775,8 +788,13 @@ const styles = StyleSheet.create({
   photoError: { height: 110, alignItems: 'center', justifyContent: 'center', padding: 8, backgroundColor: '#fdeaea', borderRadius: 5 },
   photoErrorText: { color: '#a83227', fontSize: 10, textAlign: 'center' },
   photoLabel: { color: '#15263a', fontSize: 10, fontWeight: '600', paddingTop: 7, paddingHorizontal: 2 },
-  auditHistory: { borderLeftWidth: 1.5, borderLeftColor: '#dce2e8', marginLeft: 2, paddingLeft: 12 },
-  auditItem: { paddingBottom: 12 },
+  auditTimeline: { marginTop: 2 },
+  auditRow: { flexDirection: 'row', gap: 10 },
+  auditTimelineColumn: { width: 10, alignItems: 'center' },
+  auditDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4, backgroundColor: '#8aa0b8' },
+  auditDotManual: { backgroundColor: '#b8860b' },
+  auditLine: { flex: 1, width: 1.5, marginTop: 2, marginBottom: -2, backgroundColor: '#dce2e8' },
+  auditItem: { flex: 1, paddingBottom: 16 },
   auditHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   auditAction: { color: '#15263a', fontSize: 12, fontWeight: '700' },
   auditChange: { color: '#34445a', fontSize: 10, lineHeight: 16, marginTop: 4, fontFamily: 'monospace' },
