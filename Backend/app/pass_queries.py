@@ -10,17 +10,16 @@ from sqlalchemy.orm import Session
 from app.models import VehicleEntry
 
 ENTRY_NOT_FOUND_DETAIL = "Entry not found"
-# SQL Server allows about 2,100 parameters per statement; keep IN lists well below that.
+# Oracle allows up to 1,000 literals per IN list; keep well below that.
 IN_CLAUSE_CHUNK_SIZE = 500
 SECONDS_PER_MINUTE = 60
-# Row lock held until commit so two requests cannot move the same pass at once.
-UPDATE_LOCK_HINT = "WITH (UPDLOCK, ROWLOCK)"
 
 
 def get_entry_or_404(db: Session, entry_id: int, for_update: bool = False) -> VehicleEntry:
     query = db.query(VehicleEntry)
     if for_update:
-        query = query.with_hint(VehicleEntry, UPDATE_LOCK_HINT, "mssql")
+        # Row lock held until commit so two requests cannot move the same pass at once.
+        query = query.with_for_update()
     entry = query.filter(VehicleEntry.id == entry_id).first()
     if entry is None:
         raise HTTPException(status_code=404, detail=ENTRY_NOT_FOUND_DETAIL)

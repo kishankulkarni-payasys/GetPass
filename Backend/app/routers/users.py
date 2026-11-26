@@ -5,7 +5,7 @@ from sqlalchemy import true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth import hash_password, require_admin
+from app.auth import decrypt_recoverable_password, encrypt_recoverable_password, hash_password, require_admin
 from app.database import get_db
 from app.models import (
     GoodsReceipt,
@@ -16,7 +16,7 @@ from app.models import (
     VehicleEntry,
     VehicleEntryPhoto,
 )
-from app.schemas import UserCreate, UserOut, UserUpdate
+from app.schemas import UserCreate, UserOut, UserPasswordOut, UserUpdate
 
 ADMIN_ROLE = "admin"
 LAST_ADMIN_DETAIL = "At least one active admin is required"
@@ -70,8 +70,11 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     user = User(
         username=payload.username,
         password_hash=hash_password(payload.password),
+        password_recoverable=encrypt_recoverable_password(payload.password),
         full_name=payload.full_name,
         role=payload.role,
+        email=payload.email,
+        contact_no=payload.contact_no,
     )
     db.add(user)
     try:
@@ -129,12 +132,31 @@ def update_user(
         user.role = payload.role
     if payload.is_active is not None:
         user.is_active = payload.is_active
+    if payload.email is not None:
+        user.email = payload.email
+    if payload.contact_no is not None:
+        user.contact_no = payload.contact_no
     if payload.password:
         user.password_hash = hash_password(payload.password)
+        user.password_recoverable = encrypt_recoverable_password(payload.password)
 
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/{user_id}/password", response_model=UserPasswordOut)
+def get_user_password(user_id: int, db: Session = Depends(get_db)):
+    """Admin-only password recovery. Decrypts the stored recoverable password; never logs it."""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.password_recoverable:
+        raise HTTPException(status_code=404, detail="No recoverable password stored for this user")
+    password = decrypt_recoverable_password(user.password_recoverable)
+    if password is None:
+        raise HTTPException(status_code=500, detail="Stored password could not be decrypted")
+    return {"password": password}
 
 
 @router.delete("/{user_id}", status_code=204)

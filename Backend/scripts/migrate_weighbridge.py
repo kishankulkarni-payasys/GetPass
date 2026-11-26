@@ -1,5 +1,9 @@
 """One-off, idempotent migration: adds weighbridge columns to vehicle_entries.
 
+Historical: written for the old SQL Server database and already applied there.
+Not applicable to the current PostgreSQL database — a fresh Postgres schema comes from
+`Base.metadata.create_all` (see app/main.py) instead.
+
 Run once against the target database from the Backend/ directory:
     python -m scripts.migrate_weighbridge
 Safe to re-run - every statement is guarded by an existence check.

@@ -1,5 +1,9 @@
 """One-off, idempotent migration for the v2 inward flow.
 
+Historical: written for the old SQL Server database and already applied there.
+Not applicable to the current PostgreSQL database — a fresh Postgres schema comes from
+`Base.metadata.create_all` (see app/main.py) instead.
+
 Run from the Backend/ directory, before starting the new API:
     python -m scripts.migrate_gatepass_v2
 Safe to re-run and safe either side of the first API start: new tables come from

@@ -1,10 +1,12 @@
 import hmac
 import os
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
 import bcrypt
 import jwt
+from cryptography.fernet import Fernet, InvalidToken
 from dotenv import load_dotenv
 from fastapi import Cookie, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
@@ -37,7 +39,18 @@ def _load_secret_key() -> str:
     return secret
 
 
+def _load_password_recovery_key() -> bytes:
+    key = os.getenv("PASSWORD_RECOVERY_KEY", "").strip()
+    if not key:
+        raise RuntimeError(
+            "PASSWORD_RECOVERY_KEY must be set to a Fernet key. "
+            'Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+        )
+    return key.encode("utf-8")
+
+
 SECRET_KEY = _load_secret_key()
+_password_recovery_fernet = Fernet(_load_password_recovery_key())
 
 
 def hash_password(password: str) -> str:
@@ -50,6 +63,22 @@ def verify_password(password: str, password_hash: str) -> bool:
     if len(password_bytes) > MAX_PASSWORD_BYTES:
         return False
     return bcrypt.checkpw(password_bytes, password_hash.encode("utf-8"))
+
+
+def encrypt_recoverable_password(password: str) -> str:
+    """Reversible encryption so an admin can recover a forgotten password.
+
+    Not plaintext storage: without PASSWORD_RECOVERY_KEY (kept out of the database) the
+    stored value is unreadable, unlike a plain password column.
+    """
+    return _password_recovery_fernet.encrypt(password.encode("utf-8")).decode("utf-8")
+
+
+def decrypt_recoverable_password(token: str) -> Optional[str]:
+    try:
+        return _password_recovery_fernet.decrypt(token.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        return None
 
 
 def create_access_token(user_id: int, role: str) -> str:
@@ -82,6 +111,9 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid or expired session")
     return user
 
+
+PASSWORD_RESET_TOKEN_BYTES = 32
+PASSWORD_RESET_EXPIRE_MINUTES = 30
 
 ROLE_ADMIN = "admin"
 ROLE_SECURITY_GUARD = "security_guard"
@@ -117,6 +149,10 @@ def require_roles(*allowed_roles: str):
         return user
 
     return dependency
+
+
+def generate_password_reset_token() -> str:
+    return secrets.token_urlsafe(PASSWORD_RESET_TOKEN_BYTES)
 
 
 def require_admin(user: User = Depends(get_current_user)) -> User:

@@ -4,12 +4,13 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.auth import hash_password
+from app.auth import encrypt_recoverable_password, hash_password
 from app.database import Base, SessionLocal, engine
+from app.goods_receipts import RETURN_PASS_LOCK_RESOURCE
 from app.integrations.ocr import get_ocr_adapter
 from app.integrations.po_lookup import get_po_lookup_adapter
 from app.integrations.weighbridge_indicator import get_indicator_adapter
-from app.models import User
+from app.models import SequenceLock, User
 from app.routers import (
     auth,
     dashboard,
@@ -57,9 +58,11 @@ def _bootstrap_admin():
         if db.query(User).first() is not None:
             return
         admin_username = os.getenv("DEFAULT_ADMIN_USERNAME", "admin")
+        bootstrap_password = _read_bootstrap_password()
         admin = User(
             username=admin_username,
-            password_hash=hash_password(_read_bootstrap_password()),
+            password_hash=hash_password(bootstrap_password),
+            password_recoverable=encrypt_recoverable_password(bootstrap_password),
             full_name="Default Admin",
             role="admin",
             is_active=True,
@@ -71,7 +74,18 @@ def _bootstrap_admin():
         db.close()
 
 
+def _bootstrap_sequence_locks():
+    db = SessionLocal()
+    try:
+        if db.query(SequenceLock).filter(SequenceLock.name == RETURN_PASS_LOCK_RESOURCE).first() is None:
+            db.add(SequenceLock(name=RETURN_PASS_LOCK_RESOURCE))
+            db.commit()
+    finally:
+        db.close()
+
+
 _bootstrap_admin()
+_bootstrap_sequence_locks()
 
 app.include_router(auth.router)
 app.include_router(entries.router)

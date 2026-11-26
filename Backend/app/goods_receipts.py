@@ -7,12 +7,12 @@ from decimal import Decimal, InvalidOperation
 from typing import Dict, List, Optional, Sequence, Set
 
 from fastapi import HTTPException
-from sqlalchemy import func, text
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.audit import record_audit
 from app.inward_schemas import GrnLineEdit
-from app.models import GoodsReceipt, GoodsReceiptLine, PassWeighment, QualityResult, User, VehicleEntry
+from app.models import GoodsReceipt, GoodsReceiptLine, PassWeighment, QualityResult, SequenceLock, User, VehicleEntry
 from app.pass_states import (
     ERP_STATUS_NOT_REQUIRED,
     ERP_STATUS_POSTED,
@@ -41,7 +41,6 @@ IDEMPOTENCY_KEY_PREFIX = "gatepass-grn-"
 RETURN_PASS_PREFIX = "RRP"
 RETURN_PASS_SEQUENCE_DIGITS = 5
 RETURN_PASS_LOCK_RESOURCE = "gatepass_return_pass_number"
-RETURN_PASS_LOCK_TIMEOUT_MS = 10_000
 LINE_EDITED_ACTION = "grn_line_edited"
 APPROVED_ACTION = "grn_approved"
 EDITABLE_QTY_FIELDS = ("received_qty", "accepted_qty", "rejected_qty")
@@ -52,13 +51,6 @@ QUALITY_REQUIRED_DETAIL = "Quality result is required before a GRN"
 GRN_NOT_FOUND_DETAIL = "GRN not found"
 GRN_LINE_NOT_FOUND_DETAIL = "GRN line not found"
 SOD_DETAIL = "The GRN approver must be different from the weighbridge operator"
-
-# Serialises return out-pass numbering across concurrent approvals; held until commit.
-_RETURN_PASS_LOCK_SQL = text(
-    "SET NOCOUNT ON; DECLARE @lock_result INT; "
-    "EXEC @lock_result = sp_getapplock @Resource = :resource, @LockMode = 'Exclusive', "
-    "@LockOwner = 'Transaction', @LockTimeout = :timeout_ms; SELECT @lock_result;"
-)
 
 
 def get_receipt(db: Session, entry_id: int) -> Optional[GoodsReceipt]:
@@ -221,10 +213,10 @@ def approve_goods_receipt(db: Session, entry: VehicleEntry, receipt: GoodsReceip
 
 def next_return_pass_number(db: Session) -> str:
     """Next `RRP-YYYY-NNNNN` in this year's sequence (B14); locked so two approvals never share one."""
-    lock_result = db.execute(
-        _RETURN_PASS_LOCK_SQL, {"resource": RETURN_PASS_LOCK_RESOURCE, "timeout_ms": RETURN_PASS_LOCK_TIMEOUT_MS}
-    ).scalar()
-    if lock_result is None or lock_result < 0:
+    lock_row = (
+        db.query(SequenceLock).filter(SequenceLock.name == RETURN_PASS_LOCK_RESOURCE).with_for_update().first()
+    )
+    if lock_row is None:
         raise RuntimeError("Could not lock the return out-pass number sequence")
     prefix = f"{RETURN_PASS_PREFIX}-{site_today().year}-"
     latest = (

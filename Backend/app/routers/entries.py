@@ -82,7 +82,7 @@ def _escape_like(value: str) -> str:
         value.replace(LIKE_ESCAPE_CHAR, LIKE_ESCAPE_CHAR * 2)
         .replace("%", f"{LIKE_ESCAPE_CHAR}%")
         .replace("_", f"{LIKE_ESCAPE_CHAR}_")
-        # SQL Server treats [..] as a character class inside LIKE.
+        # Harmless under Postgres too: an escaped literal "[" still matches literally.
         .replace("[", f"{LIKE_ESCAPE_CHAR}[")
     )
 

@@ -59,7 +59,7 @@ React Native CLI project talking to the same FastAPI backend via Bearer-token au
 
 ## Database schema (SQLAlchemy ORM)
 
-All tables are defined as SQLAlchemy models in `Backend/app/models.py` (`Base` from `app/database.py`). SQL Server backend; the app creates tables on startup but not the database itself. Every timestamp is naive UTC, set in Python. `PassWeighment`, `PassAuditLog` and `IntegrationEvent` are insert-only (no in-place updates — a correction adds a new row).
+All tables are defined as SQLAlchemy models in `Backend/app/models.py` (`Base` from `app/database.py`). PostgreSQL backend; the app creates tables on startup but not the database itself. Every timestamp is naive UTC, set in Python. `PassWeighment`, `PassAuditLog` and `IntegrationEvent` are insert-only (no in-place updates — a correction adds a new row).
 
 ### `vehicle_entries` — the core gate pass record
 | Column | Type | Notes |
@@ -146,7 +146,7 @@ These steps use the connected Android phone and USB port forwarding. Keep the ba
 
 - Install Android Studio with the Android SDK and Platform Tools, and install JDK 17.
 - Install Node.js `22.11` or newer (the mobile package's minimum).
-- For first-time backend setup, install Python, SQL Server, and the ODBC Driver 17 for SQL Server.
+- For first-time backend setup, install Python and PostgreSQL; pgAdmin is the recommended GUI for managing the local database.
 - On a physical phone, enable **Developer options** and **USB debugging**, connect by USB, unlock the phone, and accept the USB debugging prompt.
 
 ### 1. Configure and start the backend
@@ -167,8 +167,8 @@ In `.env`, set a random `SECRET_KEY` (at least 32 characters). Generate one with
 .\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-Also configure `DB_SERVER` / `DB_NAME` for your SQL Server. If the database has no users yet, set a private `DEFAULT_ADMIN_PASSWORD` (at least 8 characters; do not use the old placeholder). Do not commit `.env`.
-Ensure the SQL Server instance is running and the database exists; the backend creates tables but does not create the database itself.
+Also configure `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` for your PostgreSQL database. If the database has no users yet, set a private `DEFAULT_ADMIN_PASSWORD` (at least 8 characters; do not use the old placeholder). Do not commit `.env`.
+Ensure PostgreSQL is running and the database named in `DB_NAME` exists (create it with pgAdmin or `createdb`); the backend creates tables but does not create the database itself.
 
 For later runs, start the server in this PowerShell window using the virtual environment:
 

@@ -55,8 +55,9 @@ class VehicleEntry(Base):
     pass_type = Column(String(10), nullable=False, default=PASS_TYPE_GENERAL, server_default=text("'general'"))
     pass_state = Column(String(20), nullable=False, default=PASS_STATE_GATE_IN, server_default=text("'GATE_IN'"), index=True)
     pass_state_changed_at = Column(DateTime, nullable=True)
-    # Unique only where set; the filtered index is created by the migration script.
-    client_ref = Column(String(36), nullable=True)
+    # Unique where set; Postgres's unique constraint already excludes NULLs, so a
+    # plain unique constraint is enough (no filtered index needed, unlike SQL Server).
+    client_ref = Column(String(36), nullable=True, unique=True)
     gate_in_method = Column(String(10), nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     po_number = Column(String(50), nullable=True, index=True)
@@ -178,9 +179,9 @@ class GoodsReceipt(Base):
     erp_last_error = Column(Unicode(500), nullable=True)
     erp_last_attempt_at = Column(DateTime, nullable=True)
     idempotency_key = Column(String(64), nullable=False, unique=True)
-    # Unique where set; SQL Server allows only one NULL in a plain unique index, so the
-    # migration script creates it as a filtered index.
-    return_pass_number = Column(String(20), nullable=True)
+    # Unique where set; Postgres's unique constraint already excludes NULLs, so a
+    # plain unique constraint is enough (no filtered index needed, unlike SQL Server).
+    return_pass_number = Column(String(20), nullable=True, unique=True)
 
     lines = relationship("GoodsReceiptLine", cascade="all, delete-orphan")
 
@@ -233,12 +234,27 @@ class IntegrationEvent(Base):
     delivered_at = Column(DateTime, nullable=True)
 
 
+class SequenceLock(Base):
+    """One row per named sequence; locked with SELECT ... FOR UPDATE to serialize number generation."""
+
+    __tablename__ = "sequence_locks"
+
+    name = Column(String(50), primary_key=True)
+
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
     password_hash = Column(String(60), nullable=False)
+    # Encrypted (reversible), not plaintext, so an admin can look up a forgotten password
+    # without the DB holding it in the clear. See app/auth.py encrypt/decrypt_recoverable_password.
+    password_recoverable = Column(String(255), nullable=True)
+    email = Column(String(120), unique=True, nullable=True, index=True)
+    contact_no = Column(String(20), unique=True, nullable=True, index=True)
+    password_reset_token = Column(String(64), unique=True, nullable=True)
+    password_reset_expires_at = Column(DateTime, nullable=True)
     full_name = Column(String(100), nullable=False)
     role = Column(String(20), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)

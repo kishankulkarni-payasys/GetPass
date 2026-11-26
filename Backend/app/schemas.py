@@ -331,6 +331,7 @@ Role = Literal[
 
 
 class LoginRequest(BaseModel):
+    # Any of username, email, or contact_no.
     username: str
     password: str
 
@@ -340,6 +341,8 @@ class UserCreate(BaseModel):
     password: Password
     full_name: RequiredText(100)
     role: Role
+    email: OptionalText(120) = None
+    contact_no: OptionalText(20) = None
 
 
 class UserUpdate(BaseModel):
@@ -347,6 +350,8 @@ class UserUpdate(BaseModel):
     role: Optional[Role] = None
     is_active: Optional[bool] = None
     password: Optional[Password] = None
+    email: OptionalText(120) = None
+    contact_no: OptionalText(20) = None
 
 
 class UserOut(BaseModel):
@@ -358,3 +363,19 @@ class UserOut(BaseModel):
     role: Role
     is_active: bool
     created_at: UtcDatetime
+    email: Optional[str] = None
+    contact_no: Optional[str] = None
+
+
+class UserPasswordOut(BaseModel):
+    password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    # Any of username, email, or contact_no.
+    identifier: RequiredText(120)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: RequiredText(128)
+    password: Password
