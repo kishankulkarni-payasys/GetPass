@@ -1,6 +1,7 @@
 import { common } from './strings/common.js'
 import { dashboard } from './strings/dashboard.js'
 import { entries } from './strings/entries.js'
+import { forgotPassword } from './strings/forgotPassword.js'
 import { gateIn } from './strings/gateIn.js'
 import { gateOut } from './strings/gateOut.js'
 import { grn } from './strings/grn.js'
@@ -19,6 +20,7 @@ export const STRING_MODULES = {
   common,
   shell,
   login,
+  forgotPassword,
   entries,
   users,
   weighbridge,

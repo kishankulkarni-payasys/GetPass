@@ -9,9 +9,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthContext';
 import { insetSurfaceStyle, raisedSurface } from '../theme/neumorphism';
 import { Text, TextInput } from '../components/LocalizedText';
+import type { RootStackParamList } from '../navigation/RootNavigator';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 // Mirrors Frontend/src/pages/LoginPage.jsx and its .login-* styles in
 // Frontend/src/index.css, adapted to native primitives and a single-column
@@ -20,6 +24,12 @@ import { Text, TextInput } from '../components/LocalizedText';
 // verbatim from Frontend/src/i18n/strings/login.js (English only — the web app's
 // language switcher relies on LanguageContext, which the mobile app doesn't have,
 // so it's omitted here rather than wired up as non-functional UI).
+//
+// The identifier field label/placeholder and the "Forgot Password?" link are
+// mobile-only additions on top of that web layout: the backend's /auth/login
+// accepts a username, email, or contact_no in the same field (see
+// Backend/app/routers/auth.py's _find_user_by_identifier), and forgot-password
+// has no web screen yet to mirror.
 const COPY = {
   headerLabel: 'Secure access portal',
   kicker: 'Gate operations, simplified',
@@ -31,12 +41,13 @@ const COPY = {
   eyebrow: 'Welcome back',
   title: 'Sign in to GatePass',
   copy: 'Enter your work credentials to continue.',
-  labelUsername: 'Username',
+  labelUsername: 'Username, Email or Mobile Number',
   labelPassword: 'Password',
-  placeholderUsername: 'Your username',
+  placeholderUsername: 'Username, email, or mobile number',
   placeholderPassword: 'Your password',
   signingIn: 'Signing in...',
   signInSecurely: 'Sign in securely',
+  forgotPasswordLink: 'Forgot Password?',
   secureNote: 'Secure access for authorized team members',
   footerTagline: 'Site operations platform',
 };
@@ -80,7 +91,7 @@ function FeatureRow({ label }: { label: string }) {
   );
 }
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }: Props) {
   const { signIn } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -185,6 +196,14 @@ export default function LoginScreen() {
                   <Text style={styles.submitArrow}>{'→'}</Text>
                 </>
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.forgotPasswordLink}
+              onPress={() => navigation.navigate('ForgotPassword')}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.forgotPasswordLinkText}>{COPY.forgotPasswordLink}</Text>
             </TouchableOpacity>
           </View>
 
@@ -302,6 +321,8 @@ const styles = StyleSheet.create({
   submitDisabled: { opacity: 0.5 },
   submitText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   submitArrow: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  forgotPasswordLink: { alignItems: 'center', marginTop: 14, padding: 4 },
+  forgotPasswordLinkText: { color: PALETTE.accentInk, fontSize: 13, fontWeight: '600' },
   secureNote: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -35,6 +35,7 @@ export const PAGE_SECTIONS = {
 
 export const ROUTES = {
   login: '/login',
+  forgotPassword: '/forgot-password',
   entries: '/entries',
   newEntry: '/entries/new',
   entryLog: '/entries/log',

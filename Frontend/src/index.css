@@ -1372,6 +1372,41 @@ select {
   background: var(--gp-accent-strong);
 }
 
+/* Forgot/reset password: same card chrome as the login card, one column. */
+.login-main-single {
+  grid-template-columns: minmax(0, 26rem);
+  justify-content: center;
+}
+
+.login-forgot-link {
+  color: var(--gp-ink-2);
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 650;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.login-forgot-link:hover {
+  color: var(--gp-accent-ink);
+}
+
+.login-form-notice {
+  background: var(--gp-accent-wash);
+  border-radius: 0.65rem;
+  color: var(--gp-accent-ink);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 0 0 1.1rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.login-form-error {
+  color: var(--app-danger);
+  font-size: 0.78rem;
+  margin: 0.1rem 0 0;
+}
+
 .login-secure-note {
   align-items: center;
   border-top: 1px solid var(--gp-line-2);

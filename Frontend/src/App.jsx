@@ -10,6 +10,7 @@ import MobileTopBar from './components/MobileTopBar'
 import BottomTabBar from './components/BottomTabBar'
 import ProtectedRoute, { RoleHomeRedirect } from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import EntriesPage from './pages/EntriesPage'
 import DashboardPage from './pages/DashboardPage'
 import PassDetailPage from './pages/PassDetailPage'
@@ -32,6 +33,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path={ROUTES.login} element={<LoginPage />} />
+      <Route path={ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
       <Route path={ROUTES.entries} element={<RoleHomeRedirect />} />
       {/* One route for every gate section; EntriesPage checks the role per section. */}
       <Route

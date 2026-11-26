@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import TabNavigator from './TabNavigator';
 import EntryListScreen from '../screens/gate/EntryListScreen';
 import EntryDetailScreen from '../screens/gate/EntryDetailScreen';
@@ -27,6 +28,7 @@ import { Text } from '../components/LocalizedText';
 // untouched.
 export type RootStackParamList = {
   Login: undefined;
+  ForgotPassword: undefined;
   Main: undefined;
   EntryList: { mode: 'open' | 'all' };
   EntryDetail: { entryId: number };
@@ -171,7 +173,21 @@ export default function RootNavigator() {
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings', ...HEADER_OPTIONS }} />
           </>
         ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{
+                headerShown: true,
+                // Matches the English value of login.ts's forgotPasswordHeaderTitle
+                // so TranslatedHeaderTitle (LocalizedText's Text) can translate it.
+                title: 'Reset password',
+                ...HEADER_OPTIONS,
+                headerTitleAlign: 'left' as const,
+              }}
+            />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

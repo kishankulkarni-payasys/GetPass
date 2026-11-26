@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { apiErrorMessage } from '../i18n/apiErrors'
+import { ROUTES } from '../navigation/navItems'
 
 // No user yet, so the language comes from the device's stored choice.
 export default function LoginPage() {
@@ -66,7 +67,7 @@ export default function LoginPage() {
           <h2 id="login-title">{t('loginTitle')}</h2>
           <p className="login-card-copy">{t('loginCopy')}</p>
           <form onSubmit={handleSubmit} className="login-form">
-            <label htmlFor="login-username">{t('labelUsername')}</label>
+            <label htmlFor="login-username">{t('loginIdentifierLabel')}</label>
             <input
               id="login-username"
               className="form-control"
@@ -92,6 +93,9 @@ export default function LoginPage() {
               {!submitting && <span aria-hidden="true">→</span>}
             </button>
           </form>
+          <Link className="login-forgot-link" to={ROUTES.forgotPassword}>
+            {t('forgotPasswordLink')}
+          </Link>
           <div className="login-secure-note">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M7 10V7a5 5 0 0 1 10 0v3m-11 0h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm6 4v3" />

@@ -66,6 +66,8 @@ def _bootstrap_admin():
             full_name="Default Admin",
             role="admin",
             is_active=True,
+            email=os.getenv("DEFAULT_ADMIN_EMAIL", "").strip() or None,
+            contact_no=os.getenv("DEFAULT_ADMIN_CONTACT_NO", "").strip() or None,
         )
         db.add(admin)
         db.commit()

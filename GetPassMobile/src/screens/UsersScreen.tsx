@@ -3,8 +3,11 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -249,29 +252,88 @@ export default function UsersScreen() {
     }
   }
 
+  function closeCreateForm() {
+    if (isSubmitting) return;
+    setUsername('');
+    setPassword('');
+    setFullName('');
+    setRole('security_guard');
+    setShowCreateForm(false);
+  }
+
   if (isLoading) return <LoadingView />;
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom', 'left', 'right']}>
-    <FlatList
-      style={styles.flexOne}
-      data={users}
-      keyExtractor={item => String(item.id)}
-      keyboardShouldPersistTaps="handled"
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
-      ListHeaderComponent={
-        <>
-          {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
+      <FlatList
+        style={styles.flexOne}
+        data={users}
+        keyExtractor={item => String(item.id)}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => { refetch(); }} />}
+        ListHeaderComponent={
+          <>
+            {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.addButton}
+              onPress={() => setShowCreateForm(true)}
+            >
+              <Text style={styles.addButtonText}>Add user</Text>
+            </TouchableOpacity>
+          </>
+        }
+        ListEmptyComponent={<Text style={styles.emptyText}>No users found.</Text>}
+        renderItem={({ item }) => (
+          <UserCard
+            user={item}
+            isCurrentUser={item.id === currentUser?.id}
+            isMutating={mutatingUserId === item.id}
+            onRoleChange={handleRoleChange}
+            onToggleActive={handleToggleActive}
+            onDelete={confirmDelete}
+          />
+        )}
+        contentContainerStyle={styles.list}
+      />
+
+      <Modal
+        visible={showCreateForm}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCreateForm}
+      >
+        <KeyboardAvoidingView
+          style={styles.createModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <TouchableOpacity
-            accessibilityRole="button"
-            style={styles.addButton}
-            onPress={() => setShowCreateForm(show => !show)}
-          >
-            <Text style={styles.addButtonText}>{showCreateForm ? 'Cancel' : 'Add user'}</Text>
-          </TouchableOpacity>
-          {showCreateForm ? (
-            <View style={styles.createCard}>
-              <Text style={styles.createTitle}>New user</Text>
+            accessibilityLabel="Close create user form"
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeCreateForm}
+          />
+          <View style={styles.createModal}>
+            <View style={styles.createModalHeader}>
+              <View>
+                <Text style={styles.createTitle}>Create a team account</Text>
+                <Text style={styles.createCopy}>Set up sign-in details and permissions for a new user.</Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={styles.closeButton}
+                disabled={isSubmitting}
+                onPress={closeCreateForm}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.createModalBody}
+            >
               <FieldLabel label="Full name *" />
               <Input value={fullName} onChangeText={setFullName} placeholder="Full name" />
               <FieldLabel label="Username *" />
@@ -290,23 +352,10 @@ export default function UsersScreen() {
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={styles.addButtonText}>Create user</Text>}
               </TouchableOpacity>
-            </View>
-          ) : null}
-        </>
-      }
-      ListEmptyComponent={<Text style={styles.emptyText}>No users found.</Text>}
-      renderItem={({ item }) => (
-        <UserCard
-          user={item}
-          isCurrentUser={item.id === currentUser?.id}
-          isMutating={mutatingUserId === item.id}
-          onRoleChange={handleRoleChange}
-          onToggleActive={handleToggleActive}
-          onDelete={confirmDelete}
-        />
-      )}
-      contentContainerStyle={styles.list}
-    />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -325,8 +374,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  createCard: { ...raisedSurface, borderRadius: 14, padding: 14, marginBottom: 12 },
+  createModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  createModal: {
+    ...raisedSurface,
+    maxHeight: '88%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  createModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  createModalBody: { paddingHorizontal: 16, paddingBottom: 16 },
   createTitle: { color: '#15263a', fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  createCopy: { color: '#526171', fontSize: 11, maxWidth: 260 },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#eef1f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: { color: '#526171', fontSize: 22, lineHeight: 24 },
   createSubmitButton: { marginTop: 14, marginBottom: 0 },
   userCard: { ...raisedSurface, borderRadius: 14, padding: 14, marginBottom: 12 },
   userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

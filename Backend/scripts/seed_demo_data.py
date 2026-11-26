@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 import app.models  # noqa: F401  (registers every table on Base.metadata)
-from app.auth import hash_password
+from app.auth import encrypt_recoverable_password, hash_password
 from app.database import Base, SessionLocal, engine
 from app.models import (
     GoodsReceipt,
@@ -33,13 +33,13 @@ DEMO_PASSWORD = os.getenv("DEMO_USER_PASSWORD", "Demo@1234")
 DEMO_TAG = "DEMO"  # stored in reference_doc_number so demo passes can be found / skipped
 
 DEMO_USERS = [
-    ("guard1", "Ramesh Patil", "security_guard"),
-    ("guard2", "Suresh Jadhav", "security_guard"),
-    ("weigh1", "Mahesh Shinde", "weighbridge_operator"),
-    ("store1", "Anita Deshmukh", "store_incharge"),
-    ("quality1", "Pooja Kulkarni", "quality_inspector"),
-    ("supervisor1", "Vikram Joshi", "site_supervisor"),
-    ("admin2", "Site Admin", "admin"),
+    ("guard1", "Ramesh Patil", "security_guard", "9000000002"),
+    ("guard2", "Suresh Jadhav", "security_guard", "9000000003"),
+    ("weigh1", "Mahesh Shinde", "weighbridge_operator", "9000000004"),
+    ("store1", "Anita Deshmukh", "store_incharge", "9000000005"),
+    ("quality1", "Pooja Kulkarni", "quality_inspector", "9000000006"),
+    ("supervisor1", "Vikram Joshi", "site_supervisor", "9000000007"),
+    ("admin2", "Site Admin", "admin", "9000000008"),
 ]
 
 PROJECTS = [("Skyline Towers", "Tower A"), ("Skyline Towers", "Tower B"), ("Green Valley", "Phase 1")]
@@ -92,11 +92,13 @@ INWARD_PATH = ["GATE_IN", "ON_SITE", "QUALITY_PENDING", "QUALITY_RESOLVED", "GRN
 
 def seed_users(db):
     users = {}
-    for username, full_name, role in DEMO_USERS:
+    for username, full_name, role, contact_no in DEMO_USERS:
         user = db.query(User).filter(User.username == username).first()
         if user is None:
             user = User(username=username, password_hash=hash_password(DEMO_PASSWORD),
-                        full_name=full_name, role=role, is_active=True)
+                        password_recoverable=encrypt_recoverable_password(DEMO_PASSWORD),
+                        full_name=full_name, role=role, is_active=True,
+                        email=f"{username}@example.com", contact_no=contact_no)
             db.add(user)
             print(f"  + user {username:<12} ({role})")
         users[role] = user
