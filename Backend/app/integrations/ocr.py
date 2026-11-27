@@ -15,9 +15,10 @@ from app.integrations import (
     read_provider,
     require_env,
 )
-from app.integrations import mock_data
+from app.integrations import mock_data, ocr_local
 
 PROVIDER_ENV = "OCR_PROVIDER"
+PROVIDER_LOCAL = "local"
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DOC_TYPE_PLATE = "plate"
 DOC_TYPE_PO = "po"
@@ -111,11 +112,86 @@ class HttpOcr:
         return _map_document(doc_type, body)
 
 
+def _to_float(value) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(str(value).replace(",", "").strip())
+    except ValueError:
+        return None
+
+
+def _map_po_fields(result: dict) -> dict:
+    all_fields = result["extracted_data"].get("all_fields", {})
+    confidence = result["confidence_score"]
+    po_number = all_fields.get("po_number") or all_fields.get("invoice_number")
+    supplier_name = all_fields.get("vendor_name") or all_fields.get("probable_vendor_name")
+    field_confidence = {}
+    if po_number:
+        field_confidence["po_number"] = confidence
+    if supplier_name:
+        field_confidence["supplier_name"] = confidence
+    return {
+        "po_number": po_number,
+        "supplier_name": supplier_name,
+        "confidence": confidence,
+        "field_confidence": field_confidence,
+    }
+
+
+def _map_challan_fields(result: dict) -> dict:
+    from app.schemas import MAX_CHALLAN_LINES
+
+    all_fields = result["extracted_data"].get("all_fields", {})
+    confidence = result["confidence_score"]
+    challan_number = all_fields.get("dispatch_doc_number") or all_fields.get("delivery_note")
+    lines = [
+        {
+            "material": str(item.get("description") or item.get("hsn_sac") or "").strip(),
+            "quantity": _to_float(item.get("qty")),
+            "uom": item.get("unit") or None,
+            "confidence": confidence,
+        }
+        for item in result["extracted_data"].get("line_items", [])
+        if (item.get("description") or item.get("hsn_sac"))
+    ][:MAX_CHALLAN_LINES]
+    field_confidence = {}
+    if challan_number:
+        field_confidence["challan_number"] = confidence
+    return {
+        "challan_number": challan_number,
+        "confidence": confidence,
+        "lines": lines,
+        "field_confidence": field_confidence,
+    }
+
+
+class LocalOcr:
+    """Runs OCR in-process (Gemini Vision, falling back to Tesseract + regex). No ANPR support."""
+
+    enabled = True
+
+    def read(self, image: bytes, content_type: str, doc_type: str) -> dict:
+        if doc_type == DOC_TYPE_PLATE:
+            raise AdapterError("Number-plate recognition is not supported by the local OCR engine")
+        try:
+            result = ocr_local.scan_image(image, engine="auto")
+        except Exception as exc:
+            raise AdapterError("Local OCR engine failed") from exc
+        if doc_type == DOC_TYPE_PO:
+            return _map_po_fields(result)
+        return _map_challan_fields(result)
+
+
 @lru_cache(maxsize=1)
 def get_ocr_adapter():
-    provider = read_provider(PROVIDER_ENV, PROVIDER_NONE, (PROVIDER_NONE, PROVIDER_MOCK, PROVIDER_HTTP))
+    provider = read_provider(
+        PROVIDER_ENV, PROVIDER_NONE, (PROVIDER_NONE, PROVIDER_MOCK, PROVIDER_HTTP, PROVIDER_LOCAL)
+    )
     if provider == PROVIDER_MOCK:
         return MockOcr()
+    if provider == PROVIDER_LOCAL:
+        return LocalOcr()
     if provider == PROVIDER_HTTP:
         return HttpOcr(
             require_env("OCR_BASE_URL", PROVIDER_ENV),
