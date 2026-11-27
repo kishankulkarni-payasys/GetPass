@@ -25,12 +25,22 @@ const PRIMARY_TAB_KEYS = new Set(['dashboard', 'gateIn', 'stores', 'weighbridge'
 const ACTION_DETAILS: Record<string, Omit<MoreItem, 'key'>> = {
   gateOut: { label: 'Gate-out', icon: 'logout' },
   users: { label: 'Users', icon: 'group' },
+  weighbridge: { label: 'Weighbridge', icon: 'balance' },
+  quality: { label: 'Quality', icon: 'verified_user' },
 };
 
 function getMoreItems(role?: UserRole): MoreItem[] {
+  // Admin is the exception: TabNavigator.tsx hides weighbridge/quality as tabs for admin
+  // specifically, so they must NOT be excluded here as "already a tab" for that role — every
+  // other role still has them as primary tabs and keeps the usual exclusion.
+  const isAdmin = role === 'admin';
+  const primaryTabKeys = isAdmin
+    ? new Set([...PRIMARY_TAB_KEYS].filter(key => key !== 'weighbridge' && key !== 'quality'))
+    : PRIMARY_TAB_KEYS;
+
   const actionItems = role
     ? getActionsForRole(role)
-        .filter(action => !PRIMARY_TAB_KEYS.has(action.key))
+        .filter(action => !primaryTabKeys.has(action.key))
         .flatMap(action => {
           const details = ACTION_DETAILS[action.key];
           return details ? [{ key: action.key, ...details }] : [];
@@ -74,6 +84,12 @@ function navigateToItem(navigation: Props['navigation'], key: string) {
       break;
     case 'users':
       navigation.navigate('Users');
+      break;
+    case 'weighbridge':
+      navigation.navigate('Weighbridge');
+      break;
+    case 'quality':
+      navigation.navigate('QualityQueue');
       break;
     case 'account':
       navigation.navigate('Account');

@@ -93,8 +93,11 @@ export default function TabNavigator({ navigation }: Props) {
   const showGateIn = hasAction('gateIn');
   const showEntryLog = hasAction('gateOut');
   const showStores = hasAction('stores');
-  const showWeighbridge = hasAction('weighbridge');
-  const showQuality = hasAction('quality');
+  // Admin keeps the weighbridge/quality actions (roleActions.ts) but reaches them via the
+  // More sheet instead of as primary tabs, same as gate-out and users already work for admin.
+  const isAdmin = user?.role === 'admin';
+  const showWeighbridge = hasAction('weighbridge') && !isAdmin;
+  const showQuality = hasAction('quality') && !isAdmin;
   const hasPrimaryTabs =
     showDashboard || showGateIn || showEntryLog || showStores || showWeighbridge || showQuality;
 
@@ -107,6 +110,12 @@ export default function TabNavigator({ navigation }: Props) {
         break;
       case 'users':
         navigation.navigate('Users');
+        break;
+      case 'weighbridge':
+        navigation.navigate('Weighbridge');
+        break;
+      case 'quality':
+        navigation.navigate('QualityQueue');
         break;
       case 'account':
         navigation.navigate('Account');
