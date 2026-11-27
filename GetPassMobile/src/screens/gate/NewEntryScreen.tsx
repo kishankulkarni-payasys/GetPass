@@ -17,9 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/TabNavigator';
 import { EntryPhotoKind, PhotoUploadAsset } from '../../api/entries';
 import { OCR_DOC_TYPES, readDocument } from '../../api/gateIn';
+import { saveDocScan, scanPdf, scanPhotos } from '../../api/docScan';
 import { useCreateEntry, useUploadEntryPhoto } from '../../queries/useEntryQueries';
 import { DEFAULT_OCR_CONFIDENCE_THRESHOLD, useGateInConfig } from '../../queries/useGateInQueries';
 import { ChallanLineIn, PassType } from '../../types/entries';
+import { DocScanFields, DocScanOut } from '../../types/docScan';
 import { ErrorBanner, FieldLabel, Input } from '../../components/ui';
 import { extractErrorMessage } from '../../utils/apiError';
 import { background, raisedSurface, insetSurfaceStyle } from '../../theme/neumorphism';
@@ -69,6 +71,38 @@ const PASS_TYPE_OPTIONS: { value: PassType; label: string }[] = [
 
 const MAX_CHALLAN_LINES = 20;
 const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_DOC_SCAN_PHOTOS = 10;
+
+type DocScanModalStatus = 'idle' | 'uploading' | 'review' | 'saved';
+
+/**
+ * Generic multi-field document scan (name/aadhaar/mobile/date/amount/email/po_number),
+ * distinct from the PO-only OCR flow above. Lives in a modal opened from the Gate-in
+ * screen instead of its own standalone screen (was DocScanScreen.tsx).
+ */
+const EMPTY_DOC_SCAN_FIELDS: DocScanFields = {
+  po_number: null,
+  name: null,
+  aadhaar: null,
+  mobile: null,
+  date: null,
+  amount: null,
+  email: null,
+};
+
+const DOC_SCAN_FIELD_ORDER: Array<{ key: keyof DocScanFields; labelKey: string }> = [
+  { key: 'po_number', labelKey: 'PO Number' },
+  { key: 'name', labelKey: 'Name' },
+  { key: 'aadhaar', labelKey: 'Aadhaar' },
+  { key: 'mobile', labelKey: 'Mobile' },
+  { key: 'date', labelKey: 'Date' },
+  { key: 'amount', labelKey: 'Amount' },
+  { key: 'email', labelKey: 'Email' },
+];
+
+function missingDocScanFieldCount(fields: DocScanFields): number {
+  return DOC_SCAN_FIELD_ORDER.filter(({ key }) => !fields[key]).length;
+}
 
 const PHOTO_TILES: Array<{ kind: EntryPhotoKind; label: string; hint: string }> = [
   { kind: 'plate', label: 'Number plate', hint: 'Photo of the front plate' },
@@ -314,6 +348,16 @@ export default function NewEntryScreen({ navigation }: Props) {
   const poOcrRequestId = useRef(0);
   const poOcrAbortRef = useRef<AbortController | null>(null);
 
+  const [isDocScanModalOpen, setIsDocScanModalOpen] = useState(false);
+  const [docScanModalStatus, setDocScanModalStatus] = useState<DocScanModalStatus>('idle');
+  const [docScanPhotos, setDocScanPhotos] = useState<Asset[]>([]);
+  const [docScanResult, setDocScanResult] = useState<DocScanOut | null>(null);
+  const [docScanFields, setDocScanFields] = useState<DocScanFields>(EMPTY_DOC_SCAN_FIELDS);
+  const [isDocScanSaving, setIsDocScanSaving] = useState(false);
+  const [docScanSavedId, setDocScanSavedId] = useState<number | null>(null);
+  const [docScanError, setDocScanError] = useState<string | null>(null);
+  const docScanAbortRef = useRef<AbortController | null>(null);
+
   const createEntryMutation = useCreateEntry();
   const uploadEntryPhotoMutation = useUploadEntryPhoto();
   const gateInConfigQuery = useGateInConfig();
@@ -429,14 +473,27 @@ export default function NewEntryScreen({ navigation }: Props) {
       }
       setPhotos(current => ({ ...current, [kind]: asset }));
 
-      // The photo-library tile stays manual-fill only; camera capture runs OCR here.
-      if (kind === 'po_doc' && source === 'camera') {
+      // Both camera capture and library selection run OCR for the PO document tile.
+      if (kind === 'po_doc') {
         const uploadAsset = toUploadAsset(asset);
         if (uploadAsset) runPoOcr(uploadAsset);
       }
     } catch (error) {
       setErrorMessage(extractErrorMessage(error, 'Could not open the camera or image picker.'));
     }
+  }
+
+  /**
+   * Fallback when the structured OCR adapter finds no PO number: re-reads the same
+   * asset through the Doc Scan regex pipeline. Doc Scan has no confidence score for
+   * regex fields, so the caller always treats this result as unscored.
+   */
+  async function scanPoNumberFallback(uploadAsset: PhotoUploadAsset, signal: AbortSignal): Promise<string | null> {
+    const fallbackScanResult =
+      uploadAsset.type === 'application/pdf'
+        ? await scanPdf(uploadAsset, signal)
+        : await scanPhotos([uploadAsset], signal);
+    return fallbackScanResult.fields.po_number;
   }
 
   async function runPoOcr(uploadAsset: PhotoUploadAsset) {
@@ -450,23 +507,34 @@ export default function NewEntryScreen({ navigation }: Props) {
       const result = await readDocument(uploadAsset, OCR_DOC_TYPES.po, controller.signal);
       if (poOcrRequestId.current !== requestId) return; // a newer retake superseded this call
 
-      if (!result.po_number) {
+      if (result.supplier_name) {
+        setSupplierName(current => (current.trim() ? current : (result.supplier_name as string)));
+      }
+
+      let poNumber = result.po_number;
+      let confidence: number | null = result.field_confidence?.po_number ?? result.confidence ?? null;
+
+      if (!poNumber) {
+        // The structured adapter found nothing - try the Doc Scan regex pipeline before giving up.
+        poNumber = await scanPoNumberFallback(uploadAsset, controller.signal);
+        if (poOcrRequestId.current !== requestId) return; // stale/cancelled call, ignore
+        confidence = null; // Doc Scan's regex fields carry no confidence score.
+      }
+
+      if (!poNumber) {
         setPoOcrStatus('error');
         setErrorMessage(t('Could not find a PO number in the selected document. Enter it manually.'));
         return;
       }
 
-      const confidence = result.field_confidence?.po_number ?? result.confidence ?? null;
+      const foundPoNumber = poNumber;
       setPoField(current => {
         // Don't silently overwrite a value the guard already hand-edited away from
         // the previous OCR value (spec flow step 7 / AC5).
         const guardEdited = current.ocrValue !== null && current.value !== current.ocrValue;
         if (guardEdited) return current;
-        return { value: result.po_number as string, ocrValue: result.po_number as string, confidence, confirmed: false };
+        return { value: foundPoNumber, ocrValue: foundPoNumber, confidence, confirmed: false };
       });
-      if (result.supplier_name) {
-        setSupplierName(current => (current.trim() ? current : (result.supplier_name as string)));
-      }
       setPoOcrStatus('success');
     } catch (error) {
       if (poOcrRequestId.current !== requestId) return; // stale/cancelled call, ignore
@@ -498,12 +566,161 @@ export default function NewEntryScreen({ navigation }: Props) {
     }
   }
 
+  // "Choose file" on the PO document tile can resolve to either a library photo
+  // or a PDF; both are fed through runPoOcr the same way choosePdfForOcr already is.
+  function choosePoDocFile() {
+    Alert.alert(t('Choose PO file type'), t("Choose a photo from your library or a PDF. OCR reads the PDF's first page."), [
+      { text: t('Photo'), onPress: () => handlePhoto('po_doc', 'library') },
+      { text: t('Choose PDF'), onPress: choosePdfForOcr },
+      { text: t('Cancel'), style: 'cancel' },
+    ]);
+  }
+
   function openPoOcrOptions() {
     Alert.alert(t('Choose PO source'), t("Take a PO photo or select a PDF. OCR reads the PDF's first page."), [
       { text: t('Take PO photo'), onPress: () => handlePhoto('po_doc', 'camera') },
       { text: t('Choose PDF'), onPress: choosePdfForOcr },
       { text: t('Cancel'), style: 'cancel' },
     ]);
+  }
+
+  function resetDocScanModal() {
+    docScanAbortRef.current?.abort();
+    setDocScanModalStatus('idle');
+    setDocScanPhotos([]);
+    setDocScanResult(null);
+    setDocScanFields(EMPTY_DOC_SCAN_FIELDS);
+    setDocScanSavedId(null);
+    setDocScanError(null);
+  }
+
+  function openDocScanModal() {
+    resetDocScanModal();
+    setIsDocScanModalOpen(true);
+  }
+
+  function closeDocScanModal() {
+    setIsDocScanModalOpen(false);
+    resetDocScanModal();
+  }
+
+  function applyDocScanResult(result: DocScanOut) {
+    setDocScanResult(result);
+    setDocScanFields({ ...EMPTY_DOC_SCAN_FIELDS, ...result.fields });
+    setDocScanModalStatus('review');
+  }
+
+  async function takeDocScanPhoto() {
+    setDocScanError(null);
+    if (docScanPhotos.length >= MAX_DOC_SCAN_PHOTOS) {
+      setDocScanError(t('You can scan up to 10 photos at a time.'));
+      return;
+    }
+    if (!(await ensureCameraPermission())) return;
+
+    try {
+      const result = await launchCamera({ mediaType: 'photo', cameraType: 'back', quality: 0.8, maxWidth: 2048, maxHeight: 2048 });
+      if (result.didCancel) return;
+      if (result.errorCode) throw new Error(result.errorMessage || `Image selection failed (${result.errorCode}).`);
+      const asset = result.assets?.[0];
+      if (!asset?.uri) throw new Error(t('The selected image could not be opened.'));
+      setDocScanPhotos(current => [...current, asset]);
+    } catch (error) {
+      setDocScanError(extractErrorMessage(error, t('Could not open the camera.')));
+    }
+  }
+
+  async function chooseDocScanPhotosFromLibrary() {
+    setDocScanError(null);
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        selectionLimit: MAX_DOC_SCAN_PHOTOS,
+        quality: 0.8,
+        maxWidth: 2048,
+        maxHeight: 2048,
+      });
+      if (result.didCancel) return;
+      if (result.errorCode) throw new Error(result.errorMessage || `Image selection failed (${result.errorCode}).`);
+      const assets = (result.assets ?? []).filter(asset => asset.uri);
+      if (assets.length === 0) return;
+      setDocScanPhotos(current => [...current, ...assets].slice(0, MAX_DOC_SCAN_PHOTOS));
+    } catch (error) {
+      setDocScanError(extractErrorMessage(error, t('Could not open the image picker.')));
+    }
+  }
+
+  function removeDocScanPhoto(index: number) {
+    setDocScanPhotos(current => current.filter((_, photoIndex) => photoIndex !== index));
+  }
+
+  async function runDocScanPhotoScan() {
+    if (docScanPhotos.length === 0) return;
+    const uploadAssets = docScanPhotos.map(toUploadAsset).filter((asset): asset is PhotoUploadAsset => asset !== null);
+    if (uploadAssets.length === 0) {
+      setDocScanError(t('The selected image has no file location.'));
+      return;
+    }
+
+    docScanAbortRef.current?.abort();
+    const controller = new AbortController();
+    docScanAbortRef.current = controller;
+    setDocScanError(null);
+    setDocScanModalStatus('uploading');
+    try {
+      const result = await scanPhotos(uploadAssets, controller.signal);
+      applyDocScanResult(result);
+    } catch (error) {
+      setDocScanModalStatus('idle');
+      setDocScanError(extractErrorMessage(error, t('Could not read the document. Try again.')));
+    }
+  }
+
+  async function chooseDocScanPdf() {
+    setDocScanError(null);
+    try {
+      const [file] = await pick({ type: [types.pdf], mode: 'import' });
+      if (file.error) throw new Error(file.error);
+      if (file.size != null && file.size > MAX_PDF_SIZE_BYTES) {
+        setDocScanError(t('File exceeds the 10MB size limit'));
+        return;
+      }
+
+      docScanAbortRef.current?.abort();
+      const controller = new AbortController();
+      docScanAbortRef.current = controller;
+      setDocScanModalStatus('uploading');
+      const result = await scanPdf(
+        { uri: file.uri, name: file.name || 'document.pdf', type: 'application/pdf' },
+        controller.signal,
+      );
+      applyDocScanResult(result);
+    } catch (error) {
+      if (isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED) return;
+      setDocScanModalStatus('idle');
+      setDocScanError(extractErrorMessage(error, t('Could not read the document. Try again.')));
+    }
+  }
+
+  async function handleDocScanSave() {
+    if (!docScanResult || isDocScanSaving) return;
+    setIsDocScanSaving(true);
+    setDocScanError(null);
+    try {
+      const saved = await saveDocScan({
+        file_name: docScanResult.file_name,
+        method: docScanResult.method,
+        page_count: docScanResult.page_count,
+        fields: docScanFields,
+        raw_text: docScanResult.raw_text,
+      });
+      setDocScanSavedId(saved.id);
+      setDocScanModalStatus('saved');
+    } catch (error) {
+      setDocScanError(extractErrorMessage(error, t('Could not save the scanned document. Try again.')));
+    } finally {
+      setIsDocScanSaving(false);
+    }
   }
 
   async function openQrScanner() {
@@ -638,9 +855,14 @@ export default function NewEntryScreen({ navigation }: Props) {
               ? 'Take photos of the number plate, PO and challan, then type the details below.'
               : 'Visitors, service and other vehicles. Vehicle number and driver name are required.'}
           </Text>
-          <TouchableOpacity accessibilityRole="button" style={styles.qrButton} onPress={openScanOptions}>
-            <Text style={styles.qrButtonText}>Scan QR / OCR</Text>
-          </TouchableOpacity>
+          <View style={styles.introButtonRow}>
+            <TouchableOpacity accessibilityRole="button" style={styles.qrButton} onPress={openScanOptions}>
+              <Text style={styles.qrButtonText}>Scan QR / OCR</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" style={styles.qrButton} onPress={openDocScanModal}>
+              <Text style={styles.qrButtonText}>{t('Scan document')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
@@ -672,7 +894,7 @@ export default function NewEntryScreen({ navigation }: Props) {
                 photo={photos[tile.kind]}
                 disabled={isSubmitting || isRetryingPhotos}
                 onTakePhoto={() => handlePhoto(tile.kind, 'camera')}
-                onChooseFile={() => handlePhoto(tile.kind, 'library')}
+                onChooseFile={() => (tile.kind === 'po_doc' ? choosePoDocFile() : handlePhoto(tile.kind, 'library'))}
                 ocrStatus={tile.kind === 'po_doc' ? poOcrStatus : undefined}
               />
             ))}
@@ -847,6 +1069,124 @@ export default function NewEntryScreen({ navigation }: Props) {
           <Text style={styles.scannerHint}>Place the QR code inside the frame.</Text>
         </View>
       </Modal>
+
+      <Modal
+        visible={isDocScanModalOpen}
+        animationType="slide"
+        onRequestClose={closeDocScanModal}
+      >
+        <SafeAreaView style={styles.docScanScreen} edges={['left', 'right', 'bottom']}>
+          <View style={styles.docScanHeader}>
+            <Text style={styles.docScanHeaderTitle}>{t('Scan document')}</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={closeDocScanModal}>
+              <Text style={styles.scannerClose}>{t('Close')}</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <Text style={styles.introText}>
+              {t('Scan a PDF or photos of a document. The fields below are read automatically — check them before saving.')}
+            </Text>
+
+            {docScanError ? <ErrorBanner message={docScanError} /> : null}
+
+            {docScanModalStatus === 'idle' ? (
+              <>
+                {docScanPhotos.length > 0 ? (
+                  <View style={styles.photoGrid}>
+                    {docScanPhotos.map((photo, index) => (
+                      <View key={photo.uri ?? index} style={styles.photoThumbWrap}>
+                        <Image source={{ uri: photo.uri }} style={styles.photoThumbImage} resizeMode="cover" />
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          accessibilityLabel={t(`Remove photo ${index + 1}`)}
+                          style={styles.photoRemove}
+                          onPress={() => removeDocScanPhoto(index)}
+                        >
+                          <Text style={styles.photoRemoveText}>×</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {docScanPhotos.length > 0 ? (
+                  <Text style={styles.photosReadyText}>{t(`${docScanPhotos.length} photo(s) ready to scan`)}</Text>
+                ) : null}
+
+                <View style={styles.actionsCard}>
+                  <ActionButton label={t('Take photo')} onPress={takeDocScanPhoto} disabled={false} />
+                  <ActionButton
+                    label={docScanPhotos.length > 0 ? t('Add another photo') : t('Take photo')}
+                    onPress={chooseDocScanPhotosFromLibrary}
+                    disabled={false}
+                    secondary
+                  />
+                  {docScanPhotos.length > 0 ? (
+                    <ActionButton
+                      label={t(`Scan ${docScanPhotos.length} photo(s)`)}
+                      onPress={runDocScanPhotoScan}
+                      disabled={false}
+                    />
+                  ) : null}
+                  <ActionButton label={t('Choose PDF')} onPress={chooseDocScanPdf} disabled={false} secondary />
+                </View>
+              </>
+            ) : null}
+
+            {docScanModalStatus === 'uploading' ? (
+              <View style={styles.actionsCard}>
+                <Text style={styles.uploadingText}>{t('Reading the document...')}</Text>
+              </View>
+            ) : null}
+
+            {docScanModalStatus === 'review' && docScanResult ? (
+              <View style={styles.detailsCard}>
+                <Text style={styles.sectionTitle}>{t('Check the extracted details')}</Text>
+                {missingDocScanFieldCount(docScanFields) > 0 ? (
+                  <Text style={styles.confirmHint}>
+                    {t(`${missingDocScanFieldCount(docScanFields)} field(s) could not be found. Fill them in manually.`)}
+                  </Text>
+                ) : null}
+
+                {DOC_SCAN_FIELD_ORDER.map(({ key, labelKey }) => (
+                  <View key={key}>
+                    <FieldLabel label={t(labelKey)} />
+                    <Input
+                      value={docScanFields[key] ?? ''}
+                      onChangeText={text => setDocScanFields(current => ({ ...current, [key]: text }))}
+                      placeholder={t(labelKey)}
+                    />
+                  </View>
+                ))}
+
+                <View style={styles.actionRow}>
+                  <ActionButton label={t('Start over')} onPress={resetDocScanModal} disabled={false} secondary />
+                  <ActionButton
+                    label={isDocScanSaving ? t('Saving...') : t('Save')}
+                    onPress={handleDocScanSave}
+                    disabled={isDocScanSaving}
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {docScanModalStatus === 'saved' ? (
+              <View style={styles.detailsCard}>
+                <Text style={styles.sectionTitle}>{t('Document saved')}</Text>
+                {docScanSavedId !== null ? (
+                  <Text style={styles.savedText}>{t(`Saved as record #${docScanSavedId}`)}</Text>
+                ) : null}
+                <ActionButton label={t('Scan another document')} onPress={resetDocScanModal} disabled={false} />
+              </View>
+            ) : null}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -947,4 +1287,38 @@ const styles = StyleSheet.create({
   scannerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   scannerClose: { color: '#fff', fontSize: 13, fontWeight: '600', padding: 10 },
   scannerHint: { color: '#fff', fontSize: 12, textAlign: 'center', marginBottom: 48 },
+  introButtonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  docScanScreen: { flex: 1, backgroundColor: background },
+  docScanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingTop: 10,
+  },
+  docScanHeaderTitle: { color: '#17202b', fontSize: 16, fontWeight: '700' },
+  actionsCard: {
+    ...raisedSurface,
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
+  },
+  uploadingText: { color: '#17202b', fontSize: 12, textAlign: 'center' },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  photoThumbWrap: { width: 84, height: 84, borderRadius: 8, overflow: 'hidden' },
+  photoThumbImage: { width: '100%', height: '100%' },
+  photoRemove: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#050b12',
+  },
+  photoRemoveText: { color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 15 },
+  photosReadyText: { color: '#526171', fontSize: 11, marginBottom: 10 },
+  savedText: { color: '#1e8e5a', fontSize: 12, fontWeight: '600', marginBottom: 12 },
 });

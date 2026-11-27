@@ -242,6 +242,21 @@ class SequenceLock(Base):
     name = Column(String(50), primary_key=True)
 
 
+class DocScanResult(Base):
+    """A document scan (PDF or photos) with fields the guard reviewed and confirmed."""
+
+    __tablename__ = "doc_scan_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_name = Column(String(255), nullable=False)
+    scan_method = Column(String(10), nullable=False)  # 'text', 'ocr' or 'photo'
+    page_count = Column(Integer, nullable=False)
+    fields_json = Column(UnicodeText, nullable=False)
+    raw_text = Column(UnicodeText, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class User(Base):
     __tablename__ = "users"
 

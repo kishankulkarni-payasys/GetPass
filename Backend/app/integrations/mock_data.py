@@ -42,6 +42,16 @@ MOCK_PURCHASE_ORDERS = [
     },
 ]
 
+# Raw OCR text for a scanned document (doc-scan), with fields the field extractor should find.
+MOCK_SCAN_TEXT = (
+    "Name: Ramesh Kumar\n"
+    "Aadhaar: 1234 5678 9012\n"
+    "Mobile: 9876543210\n"
+    "Date: 12/05/2026\n"
+    "Amount: Rs. 4500\n"
+    "Email: ramesh.kumar@example.com\n"
+)
+
 MOCK_MIN_WEIGHT_KG = 8_000
 MOCK_MAX_WEIGHT_KG = 45_000
 # One reading in four is unstable so the "not stable" path can be tested.

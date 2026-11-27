@@ -297,6 +297,26 @@ class OcrResultOut(BaseModel):
     field_confidence: dict = {}
 
 
+class DocScanOut(BaseModel):
+    file_name: str
+    method: Literal["text", "ocr", "photo"]
+    page_count: int
+    fields: dict
+    raw_text: Optional[str] = None
+
+
+class DocScanSaveIn(BaseModel):
+    file_name: str = Field(..., max_length=255)
+    method: Literal["text", "ocr", "photo"]
+    page_count: int
+    fields: dict
+    raw_text: Optional[str] = None
+
+
+class DocScanSavedOut(BaseModel):
+    id: int
+
+
 class PoLineOut(BaseModel):
     material: str
     uom: Optional[str] = None

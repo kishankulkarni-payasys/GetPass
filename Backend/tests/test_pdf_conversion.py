@@ -9,6 +9,7 @@ from starlette.datastructures import Headers
 from starlette.datastructures import UploadFile
 
 from app.routers.gate_in import read_document
+from app.doc_scan_extractor import parse_fields
 from app.pdf_conversion import first_page_as_png
 from app.photo_storage import InvalidPhotoError
 
@@ -58,6 +59,18 @@ class GateInPdfOcrTests(unittest.TestCase):
         self.assertEqual(content_type, "image/png")
         self.assertEqual(doc_type, "po")
         self.assertEqual(result.po_number, "PO-123")
+
+
+class DocScanPoExtractionTests(unittest.TestCase):
+    def test_extracts_po_number_without_confusing_challan_number(self):
+        fields = parse_fields("PO DATE 05.05.2026\nPO NO: 4600012345\nCHALLAN NO: MH2603062254")
+
+        self.assertEqual(fields["po_number"], "4600012345")
+
+    def test_extracts_purchase_order_label(self):
+        fields = parse_fields("Purchase Order Number: PO-2026/145")
+
+        self.assertEqual(fields["po_number"], "PO-2026/145")
 
 
 if __name__ == "__main__":

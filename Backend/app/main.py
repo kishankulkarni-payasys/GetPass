@@ -14,6 +14,7 @@ from app.models import SequenceLock, User
 from app.routers import (
     auth,
     dashboard,
+    doc_scan,
     entries,
     gate_in,
     grn,
@@ -99,6 +100,7 @@ app.include_router(quality.router)
 app.include_router(quality_integration.router)
 app.include_router(grn.router)
 app.include_router(dashboard.router)
+app.include_router(doc_scan.router)
 
 
 @app.exception_handler(Exception)

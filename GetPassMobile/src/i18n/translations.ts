@@ -1,5 +1,6 @@
 import { common } from './strings/common';
 import { dashboard } from './strings/dashboard';
+import { docScan } from './strings/docScan';
 import { entries } from './strings/entries';
 import { gateIn } from './strings/gateIn';
 import { gateOut } from './strings/gateOut';
@@ -15,7 +16,7 @@ import { weighbridge } from './strings/weighbridge';
 export type LanguageCode = 'en' | 'hi' | 'mr';
 type Catalog = Record<LanguageCode, Record<string, string>>;
 
-const modules = [common, dashboard, entries, gateIn, gateOut, grn, login, mobile, passes, quality, shell, users, weighbridge];
+const modules = [common, dashboard, docScan, entries, gateIn, gateOut, grn, login, mobile, passes, quality, shell, users, weighbridge];
 
 function mergeLanguage(language: LanguageCode): Record<string, string> {
   return Object.assign({}, ...modules.map(module => module[language]));
