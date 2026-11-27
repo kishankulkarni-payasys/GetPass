@@ -50,7 +50,7 @@ from app.schemas import (
     WeighmentCreate,
     WeightUpdate,
 )
-from app.weighing import KIND_GROSS, SOURCE_MANUAL, capture_weighment, current_weighment, current_weights_kg
+from app.weighing import KIND_GROSS, SOURCE_MANUAL, capture_weighment, current_weighment
 
 router = APIRouter(prefix="/api/entries", tags=["entries"], dependencies=[Depends(get_current_user)])
 
@@ -59,7 +59,6 @@ ENTRY_NOT_FOUND_DETAIL = "Entry not found"
 CONFIRM_REJECTED_DETAIL = "Confirm the rejected material is on the vehicle"
 UNKNOWN_PHOTO_KIND_DETAIL = "Unknown photo kind"
 UNKNOWN_WEIGHMENT_DETAIL = "Weighment does not belong to this pass"
-WEIGHTS_REQUIRED_DETAIL = "Record both the loaded (gross) and empty (tare) weight before gate-out"
 LEGACY_WEIGHT_REASON = "Entered on legacy screen"
 INWARD_GATE_OUT_TRANSITION = "T7"
 GENERAL_GATE_OUT_TRANSITION = "T8"
@@ -175,22 +174,14 @@ def _rejected_total(entry: VehicleEntry) -> float:
     return sum(float(line.rejected_qty) for line in receipt.lines) if receipt else 0.0
 
 
-def _require_both_weights(entry: VehicleEntry) -> None:
-    gross_kg, tare_kg = current_weights_kg(entry)
-    if gross_kg is None or tare_kg is None:
-        raise HTTPException(status_code=422, detail=WEIGHTS_REQUIRED_DETAIL)
-
-
 def _gate_out(db: Session, entry: VehicleEntry, payload: ExitRequest, user: User) -> None:
     if entry.pass_type != PASS_TYPE_INWARD:
         if not is_transition_allowed(entry, GENERAL_GATE_OUT_TRANSITION):
             raise_state_conflict()
-        _require_both_weights(entry)
         apply_transition(db, entry, GENERAL_GATE_OUT_TRANSITION, actor=user)
         return
     if not is_transition_allowed(entry, INWARD_GATE_OUT_TRANSITION):
         raise_state_conflict()
-    _require_both_weights(entry)
     has_rejected = _rejected_total(entry) > 0
     if has_rejected and not payload.rejected_material_on_vehicle:
         raise HTTPException(status_code=422, detail=CONFIRM_REJECTED_DETAIL)
